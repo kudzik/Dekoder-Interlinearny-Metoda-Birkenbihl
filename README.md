@@ -16,7 +16,7 @@ npm ci
 npm run dev
 ```
 
-Żądanie do `/api/decode` potrzebuje `GEMINI_API_KEY`. Lokalnie umieść go w ignorowanym przez Git pliku `.dev.vars`; wdrożony Worker powinien korzystać z sekretu:
+Żądania do `/api/decode` i `/api/speech` potrzebują `GEMINI_API_KEY`. Lokalnie umieść go w ignorowanym przez Git pliku `.dev.vars`; wdrożony Worker powinien korzystać z sekretu:
 
 ```sh
 printf 'GEMINI_API_KEY=tu-wklej-klucz\n' > .dev.vars
@@ -29,11 +29,12 @@ Domyślnie używany jest `gemini-3.5-flash-lite` z minimalnym poziomem „thinki
 ## Funkcje
 
 - Import i przeciąganie plików `.md`, `.markdown` i `.txt`, pole Markdown, przykład oraz trzy tryby nauki.
-- Głosy Web Speech API `en-GB`/`en-US`, tempo 0.6–1.2, odtwarzanie tokenu, zdania i całego tekstu.
+- Gemini TTS z wyborem brytyjskiego lub amerykańskiego akcentu, tempem 0.6–1.2 oraz odtwarzaniem tokenu, zdania i całego tekstu. Wymaga połączenia z Internetem; lokalny eksport HTML pozostaje offline i korzysta z głosów systemowych.
 - Tłumaczenie naturalne na żądanie, glosy gramatyczne, eksport Markdown `<ruby>` i samodzielny HTML bez zasobów zewnętrznych.
 - Ostatnie 10 lekcji w `localStorage`; cache jest wersjonowany, walidowany i pozostaje na danym urządzeniu.
 
 Tekst wysłany do dekodowania trafia do Gemini. Nie wklejaj do aplikacji treści poufnych. Wyniki modelu są walidowane i niepoprawne odpowiedzi nie są pokazywane jako poprawne tłumaczenia.
+Tekst wysłany do syntezy mowy również trafia do Gemini. Endpoint TTS ma osobny limit 60 żądań na minutę z adresu klienta; powtarzane odtworzenia w tej samej karcie korzystają z krótkotrwałego cache'u w pamięci.
 
 ## Obsługiwany Markdown
 

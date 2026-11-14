@@ -11,6 +11,14 @@
         "limit": 10,
         "period": 60
       }
+    },
+    {
+      "name": "SPEECH_RATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
     }
   ]
 }

@@ -25,8 +25,11 @@ body {
   display: inline-flex;
   flex-direction: column;
   vertical-align: bottom;
-  margin: 0.15rem 0.45rem 0.65rem 0;
-  padding: 0.15rem 0.3rem;
+  align-items: center;
+  gap: 0.1rem;
+  margin: 0.15rem 0.3rem 0.55rem 0;
+  padding: 0.3rem 0.4rem;
+  min-width: 2rem;
   border: 0;
   border-radius: 0.375rem;
   background: transparent;
@@ -44,8 +47,8 @@ body {
 
 .token-gloss {
   color: #0f766e;
-  font-size: 0.75rem;
-  line-height: 1.2;
+  font-size: 0.82rem;
+  line-height: 1.35;
   user-select: none;
 }
 
@@ -54,8 +57,10 @@ body {
 }
 
 .token-en {
+  line-height: 1.35;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .token-chunk {

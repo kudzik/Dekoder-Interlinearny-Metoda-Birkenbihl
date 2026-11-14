@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DecodedDocumentSchema, type DecodedDocument } from "../decode/schema";
 
-const STORAGE_KEY = "birkenbihl-lessons-v1";
+const STORAGE_KEY = "birkenbihl-lessons-v2";
 const MAX_SAVED_LESSONS = 10;
 const MAX_STORAGE_CHARACTERS = 1_000_000;
 

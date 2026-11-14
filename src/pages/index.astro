@@ -50,11 +50,11 @@ import AppLayout from "../layouts/AppLayout.astro";
           <button class="mode-button rounded-lg px-3 py-2 text-sm" data-mode="listen">Aktywne słuchanie</button>
           <button class="mode-button rounded-lg px-3 py-2 text-sm" data-mode="test">Test / Active Recall</button>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <label class="text-sm">Głos
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 text-sm">Głos
             <select id="voice-select" class="max-w-48 rounded border bg-white p-1.5 text-sm dark:bg-slate-800" aria-label="Wybierz głos"></select>
           </label>
-          <label class="text-sm">Tempo
+          <label class="flex items-center gap-2 text-sm">Tempo
             <select id="rate-select" class="rounded border bg-white p-1.5 text-sm dark:bg-slate-800" aria-label="Prędkość czytania">
               <option value="0.6">0.6x</option>
               <option value="0.8">0.8x</option>
