@@ -103,6 +103,9 @@ export function initializeApp(): void {
     decodeButton.disabled = true;
     decodeButton.textContent = "Dekodowanie…";
     status.textContent = "Tekst jest dekodowany przez AI. Nie zamykaj tej karty.";
+    const progressTimer = setTimeout(() => {
+      status.textContent = "Gemini nadal przetwarza tekst. Jeśli przekroczy limit czasu, pokaże się komunikat błędu.";
+    }, 15_000);
     try {
       const response = await fetch("/api/decode", {
         method: "POST",
@@ -134,6 +137,7 @@ export function initializeApp(): void {
       status.textContent =
         error instanceof Error ? error.message : "Wystąpił nieznany błąd dekodowania.";
     } finally {
+      clearTimeout(progressTimer);
       decodeButton.disabled = false;
       decodeButton.textContent = "Dekoduj tekst (AI)";
     }

@@ -123,7 +123,7 @@ export async function decodeWithGemini(
     throw new DecodeServiceError("Usługa dekodowania nie jest skonfigurowana.", 503);
   }
 
-  const model = environment.GEMINI_MODEL || "gemini-4-hydrogen";
+  const model = environment.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const requestBody = JSON.stringify({
     contents: [
@@ -147,6 +147,7 @@ export async function decodeWithGemini(
       ],
     },
     generationConfig: {
+      thinkingConfig: { thinkingLevel: "minimal" },
       responseMimeType: "application/json",
       responseSchema: GEMINI_RESPONSE_SCHEMA,
     },
@@ -164,7 +165,13 @@ export async function decodeWithGemini(
         body: requestBody,
         signal: AbortSignal.timeout(45_000),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new DecodeServiceError(
+          "Gemini nie odpowiedziało w ciągu 45 sekund. Spróbuj ponownie lub podziel tekst na krótsze części.",
+          504,
+        );
+      }
       if (attempt === MAX_GEMINI_ATTEMPTS - 1) {
         throw new DecodeServiceError("Nie udało się połączyć z Gemini API po kilku próbach.", 502);
       }

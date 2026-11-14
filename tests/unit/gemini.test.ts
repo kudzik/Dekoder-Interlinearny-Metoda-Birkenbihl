@@ -41,12 +41,25 @@ describe("decodeWithGemini", () => {
 
     await expect(decodeWithGemini(source, { GEMINI_API_KEY: "test-secret" })).resolves.toEqual(validModelResult);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/models/gemini-4-hydrogen:generateContent"),
+      expect.stringContaining("/models/gemini-3.5-flash-lite:generateContent"),
       expect.objectContaining({
         headers: expect.objectContaining({ "x-goog-api-key": "test-secret" }),
-        body: expect.not.stringContaining('"temperature"'),
       }),
     );
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(requestBody.generationConfig.thinkingConfig.thinkingLevel).toBe("minimal");
+    expect(requestBody.generationConfig).not.toHaveProperty("temperature");
+  });
+
+  it("reports a Gemini timeout without retrying the request", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new DOMException("Timed out", "TimeoutError"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(decodeWithGemini(source, { GEMINI_API_KEY: "test-secret" })).rejects.toMatchObject({
+      message: expect.stringContaining("45 sekund"),
+      status: 504,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("retries a temporary Gemini 503 before returning the decoded response", async () => {
