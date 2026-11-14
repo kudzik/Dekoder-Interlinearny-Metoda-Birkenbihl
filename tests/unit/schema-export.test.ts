@@ -59,4 +59,20 @@ describe("decoded document contract and exports", () => {
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).not.toContain("<script src=");
   });
+
+  it("exports a readable lesson structure without relying on Markdown ruby support", () => {
+    const markdown = createMarkdownExport(validDocument);
+    const html = createStandaloneHtml(validDocument);
+
+    expect(markdown).toContain("# Arkusz dekodowania");
+    expect(markdown).toContain("| Ja | jestem gotowy. |");
+    expect(markdown).toContain("| :---: | :---: |");
+    expect(markdown).toContain("| **I** | **am ready.** |");
+    expect(markdown).toContain("> **Naturalnie:** *Jestem gotowy.*");
+    expect(markdown).not.toContain("<ruby>");
+    expect(html).toContain('class="sentence"');
+    expect(html).toContain('class="sentence-content"');
+    expect(html).toContain("Arkusz dekodowania");
+    expect(html).toContain("@media print");
+  });
 });

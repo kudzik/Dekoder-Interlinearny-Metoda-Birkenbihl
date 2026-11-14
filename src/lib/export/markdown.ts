@@ -9,13 +9,33 @@ function escapeHtml(text: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function escapeTableCell(text: string): string {
+  return escapeHtml(text).replaceAll("|", "\\|").replaceAll("\n", "<br>");
+}
+
+const TOKENS_PER_TABLE = 4;
+
+function interlinearTables(tokens: DecodedDocument["blocks"][number]["sentences"][number]["tokens"]): string[] {
+  const lines: string[] = [];
+  for (let start = 0; start < tokens.length; start += TOKENS_PER_TABLE) {
+    const group = tokens.slice(start, start + TOKENS_PER_TABLE);
+    lines.push(
+      `| ${group.map((token) => escapeTableCell(token.pl_literal)).join(" | ")} |`,
+      `| ${group.map(() => ":---:").join(" | ")} |`,
+      `| ${group.map((token) => `**${escapeTableCell(token.en)}**`).join(" | ")} |`,
+      "",
+    );
+  }
+  return lines;
+}
+
 export function createMarkdownExport(document: DecodedDocument): string {
   const lines = [
     "<!-- Wygenerowano w Dekoderze Interlinearnym (Metoda Birkenbihl) -->",
     "",
     "# Arkusz dekodowania",
     "",
-    "> **Jak czytać:** najpierw przeczytaj angielskie zdanie, następnie porównaj je z przekładem dosłownym. Na końcu sprawdź naturalne tłumaczenie.",
+    "> **Jak czytać:** polskie znaczenie znajduje się w górnym wierszu, bezpośrednio nad odpowiadającym mu angielskim słowem lub zwrotem.",
     "",
     "---",
     "",
@@ -24,16 +44,14 @@ export function createMarkdownExport(document: DecodedDocument): string {
   for (const block of document.blocks) {
     for (const sentence of block.sentences) {
       const english = sentence.tokens.map((token) => escapeHtml(token.en)).join(" ");
-      const literal = sentence.tokens.map((token) => escapeHtml(token.pl_literal)).join(" · ");
 
       if (block.type === "heading") {
         lines.push(`${"#".repeat(Math.min((block.level ?? 1) + 1, 6))} ${english}`, "");
       } else {
-        const itemPrefix = block.type === "list-item" ? "- " : "";
-        lines.push(`${itemPrefix}**EN:** ${english}`);
+        if (block.type === "list-item") lines.push("**Element listy:**", "");
       }
-      lines.push(`  **PL dosłownie:** ${literal}`);
-      if (sentence.natural_pl) lines.push(`  **PL naturalnie:** *${escapeHtml(sentence.natural_pl)}*`);
+      lines.push(...interlinearTables(sentence.tokens));
+      if (sentence.natural_pl) lines.push(`> **Naturalnie:** *${escapeHtml(sentence.natural_pl)}*`);
       lines.push("");
     }
     if (block.type !== "heading") lines.push("---", "");

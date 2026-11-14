@@ -1123,7 +1123,7 @@ ZASADY KRYTYCZNE:
     });
 
     // =========================================================================
-    // 8. EKSPORT DO MARKDOWN (.md) Z TAGAMI <ruby> ORAZ SAMODZIELNEGO HTML (.html)
+    // 8. EKSPORT DO MARKDOWN (.md) ORAZ SAMODZIELNEGO HTML (.html)
     // =========================================================================
     function downloadFile(content, filename, mimeType) {
       const blob = new Blob([content], { type: mimeType });
@@ -1137,32 +1137,53 @@ ZASADY KRYTYCZNE:
       URL.revokeObjectURL(url);
     }
 
-    // Eksport do Markdown (.md)
+    function escapeMarkdownCell(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('|', '\\|')
+        .replaceAll('\n', '<br>');
+    }
+
+    function createInterlinearTables(tokens) {
+      const lines = [];
+      const tokensPerTable = 4;
+      for (let start = 0; start < tokens.length; start += tokensPerTable) {
+        const group = tokens.slice(start, start + tokensPerTable);
+        lines.push(
+          `| ${group.map(token => escapeMarkdownCell(token.pl_literal)).join(' | ')} |`,
+          `| ${group.map(() => ':---:').join(' | ')} |`,
+          `| ${group.map(token => `**${escapeMarkdownCell(token.en)}**`).join(' | ')} |`,
+          ''
+        );
+      }
+      return lines.join('\n');
+    }
+
+    // Eksport do Markdown (.md) w przenośnym układzie interlinearnym
     document.getElementById('export-md-btn').addEventListener('click', () => {
       if (!currentData || !currentData.blocks) return;
 
-      let mdOutput = `<!-- Wygenerowano w Dekoderze Interlinearnym (Metoda Birkenbihl) -->\n\n`;
+      let mdOutput = `<!-- Wygenerowano w Dekoderze Interlinearnym (Metoda Birkenbihl) -->\n\n# Arkusz dekodowania\n\n> **Jak czytać:** polskie znaczenie znajduje się w górnym wierszu, bezpośrednio nad odpowiadającym mu angielskim słowem lub zwrotem.\n\n---\n\n`;
 
       currentData.blocks.forEach(block => {
-        let prefix = '';
-        if (block.type === 'h1') prefix = '# ';
-        else if (block.type === 'h2') prefix = '## ';
-        else if (block.type === 'h3') prefix = '### ';
-        else if (block.type === 'li') prefix = '- ';
-
-        const rubyLine = block.tokens
-          .map(t => `<ruby>${t.en}<rt>${t.pl_literal}</rt></ruby>`)
-          .join(' ');
-
-        mdOutput += `${prefix}${rubyLine}\n`;
-        if (block.pl_natural) {
-          mdOutput += `> *Tłumaczenie: ${block.pl_natural}*\n`;
+        const headingLevel = block.type === 'h1' ? 2 : block.type === 'h2' ? 3 : block.type === 'h3' ? 4 : 0;
+        if (headingLevel) {
+          mdOutput += `${'#'.repeat(headingLevel)} ${block.tokens.map(token => escapeMarkdownCell(token.en)).join(' ')}\n\n`;
+        } else if (block.type === 'li') {
+          mdOutput += `**Element listy:**\n\n`;
         }
-        mdOutput += `\n`;
+        mdOutput += `${createInterlinearTables(block.tokens)}\n`;
+        if (block.pl_natural) {
+          mdOutput += `> **Naturalnie:** *${escapeMarkdownCell(block.pl_natural)}*\n`;
+        }
+        if (!headingLevel) mdOutput += `\n---\n`;
+        mdOutput += '\n';
       });
 
       downloadFile(mdOutput.trim(), 'dekodowanie-birkenbihl.md', 'text/markdown;charset=utf-8');
-      showToast('Pobrano plik Markdown (.md) ze znacznikami <ruby>.', 'success');
+      showToast('Pobrano czytelny arkusz Markdown z tłumaczeniami nad słowami.', 'success');
     });
 
     // Eksport do samodzielnego pliku HTML (.html) do nauki offline
