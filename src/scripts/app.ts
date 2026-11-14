@@ -2,16 +2,9 @@ import { createMarkdownExport } from "../lib/export/markdown";
 import { createStandaloneHtml } from "../lib/export/html";
 import { findSavedLesson, getMostRecentLesson, saveLesson } from "../lib/storage/lessons";
 import { DecodedDocumentSchema, type DecodedDocument } from "../lib/decode/schema";
+import { SAMPLE_DECODED_DOCUMENT, SAMPLE_MARKDOWN } from "../lib/decode/sample";
 import { renderDocument } from "./reader";
 import { SpeechController } from "./speech";
-
-const SAMPLE_MARKDOWN = `# A Morning Routine That Changed My Life
-
-For years, I used to put off waking up early. Whenever my alarm went off, I would hit the snooze button and stay in bed.
-
-## Turning Over a New Leaf
-
-Last month, I decided to give up this bad habit. At first, getting out of bed at six o'clock was not a piece of cake, but I kept going. Now, I look forward to my quiet mornings with a cup of coffee before the rest of the city wakes up.`;
 
 function getElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -36,6 +29,8 @@ export function initializeApp(): void {
   const reader = getElement<HTMLElement>("reader");
   const status = getElement<HTMLElement>("status-message");
   const decodeButton = getElement<HTMLButtonElement>("decode-button");
+  const decodeButtonLabel = decodeButton.querySelector<HTMLElement>("[data-decode-label]");
+  if (!decodeButtonLabel) throw new Error("Nie znaleziono etykiety przycisku dekodowania.");
   const naturalToggle = getElement<HTMLInputElement>("show-natural");
   const testCounter = getElement<HTMLElement>("test-counter");
   const playAllButton = getElement<HTMLButtonElement>("play-all");
@@ -58,6 +53,7 @@ export function initializeApp(): void {
     renderDocument(reader, currentData, currentMode, showNatural, {
       onSpeakToken: (text, element) => speech.speakToken(text, element),
       onSpeakSentence: (sentence, element) => speech.speakSentence(sentence, element),
+      onSpeakBlock: (sentences, element) => speech.speakBlock(sentences, element),
       onReveal: (key) => {
         if (currentMode !== "test") return;
         revealedTokens.add(key);
@@ -101,7 +97,7 @@ export function initializeApp(): void {
 
     speech.stop();
     decodeButton.disabled = true;
-    decodeButton.textContent = "Dekodowanie…";
+    decodeButtonLabel.textContent = "Dekodowanie…";
     status.textContent = "Tekst jest dekodowany przez AI. Nie zamykaj tej karty.";
     const progressTimer = setTimeout(() => {
       status.textContent = "Gemini nadal przetwarza tekst. Jeśli przekroczy limit czasu, pokaże się komunikat błędu.";
@@ -139,25 +135,33 @@ export function initializeApp(): void {
     } finally {
       clearTimeout(progressTimer);
       decodeButton.disabled = false;
-      decodeButton.textContent = "Dekoduj tekst (AI)";
+      decodeButtonLabel.textContent = "Dekoduj tekst (AI)";
     }
   };
 
   const latestLesson = getMostRecentLesson();
   markdownInput.value = latestLesson?.markdown ?? SAMPLE_MARKDOWN;
-  if (latestLesson) restoreFromCache(latestLesson.markdown);
+  if (latestLesson) {
+    restoreFromCache(latestLesson.markdown);
+  } else {
+    showDocument(SAMPLE_DECODED_DOCUMENT, SAMPLE_MARKDOWN);
+    status.textContent = "Wczytano gotową próbkę — przykładowe dane, bez wysyłania tekstu do Gemini.";
+  }
 
   getElement<HTMLButtonElement>("decode-button").addEventListener("click", () => void decode());
 
   getElement<HTMLButtonElement>("load-example").addEventListener("click", () => {
     markdownInput.value = SAMPLE_MARKDOWN;
-    if (!restoreFromCache(SAMPLE_MARKDOWN)) {
-      status.textContent = "Przykładowy tekst załadowano. Kliknij „Dekoduj tekst (AI)”, aby go opracować.";
-    }
+    fileName.textContent = "Zachowujemy nagłówki, akapity i listy";
+    if (restoreFromCache(SAMPLE_MARKDOWN)) return;
+    showDocument(SAMPLE_DECODED_DOCUMENT, SAMPLE_MARKDOWN);
+    status.textContent = "Wczytano gotową próbkę — przykładowe dane, bez wysyłania tekstu do Gemini.";
   });
 
   getElement<HTMLButtonElement>("clear-input").addEventListener("click", () => {
+    speech.stop();
     markdownInput.value = "";
+    fileName.textContent = "Zachowujemy nagłówki, akapity i listy";
     currentData = null;
     revealedTokens.clear();
     workspace.classList.add("hidden");
@@ -210,7 +214,9 @@ export function initializeApp(): void {
     document.documentElement.classList.toggle("dark");
   });
   getElement<HTMLButtonElement>("guide-toggle").addEventListener("click", () => {
-    getElement<HTMLElement>("guide-panel").classList.toggle("hidden");
+    const panel = getElement<HTMLElement>("guide-panel");
+    panel.classList.toggle("hidden");
+    getElement<HTMLElement>("guide-chevron").classList.toggle("rotate-180", !panel.classList.contains("hidden"));
   });
 
   document.querySelectorAll<HTMLButtonElement>(".mode-button").forEach((button) => {
@@ -220,11 +226,16 @@ export function initializeApp(): void {
         status.textContent = "Nieznany tryb nauki.";
         return;
       }
+      speech.stop();
       currentMode = selectedMode;
       document.querySelectorAll(".mode-button").forEach((item) => {
-        item.classList.remove("bg-teal-100", "text-teal-900");
+        item.classList.remove("bg-white", "dark:bg-slate-700", "text-teal-700", "dark:text-teal-300", "shadow-sm");
+        item.classList.add("text-slate-600", "dark:text-slate-300");
+        item.setAttribute("aria-pressed", "false");
       });
-      button.classList.add("bg-teal-100", "text-teal-900");
+      button.classList.add("bg-white", "dark:bg-slate-700", "text-teal-700", "dark:text-teal-300", "shadow-sm");
+      button.classList.remove("text-slate-600", "dark:text-slate-300");
+      button.setAttribute("aria-pressed", "true");
       render();
     });
   });

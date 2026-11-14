@@ -3,6 +3,7 @@ import type { DecodedDocument, DecodedSentence, DecodedToken } from "../lib/deco
 export interface ReaderCallbacks {
   onSpeakToken(token: string, tokenElement: HTMLElement): void;
   onSpeakSentence(sentence: DecodedSentence, sentenceElement: HTMLElement): void;
+  onSpeakBlock(sentences: DecodedSentence[], blockElement: HTMLElement): void;
   onReveal(tokenKey: string): void;
   onHoverToken(tokenKey: string): void;
   isRevealed(tokenKey: string): boolean;
@@ -27,8 +28,17 @@ export function renderDocument(
       blockElement.classList.add("border-l-2", "border-teal-500/50", "ml-3");
       blockElement.setAttribute("aria-label", `Element listy ${blockIndex + 1}`);
     } else if (block.type === "heading") {
-      blockElement.classList.add("font-semibold");
+      blockElement.classList.add("font-semibold", "border-b", "border-stone-200", "pb-4", "dark:border-slate-700");
     }
+
+    const blockControls = document.createElement("div");
+    blockControls.className = "mb-1 flex justify-end";
+    const playBlockButton = createPlayButton("Odtwórz fragment");
+    playBlockButton.classList.add("play-block-button");
+    playBlockButton.innerHTML = `${playIcon}<span>Fragment</span>`;
+    playBlockButton.addEventListener("click", () => callbacks.onSpeakBlock(block.sentences, blockElement));
+    blockControls.append(playBlockButton);
+    blockElement.append(blockControls);
 
     block.sentences.forEach((sentence) => {
       const sentenceElement = document.createElement("section");
@@ -40,15 +50,17 @@ export function renderDocument(
       const sentenceLabel = document.createElement("span");
       sentenceLabel.className = "sr-only";
       sentenceLabel.textContent = `Zdanie ${sentence.id}`;
-      const playButton = document.createElement("button");
-      playButton.type = "button";
-      playButton.className = "rounded-md px-2 py-1 text-xs text-teal-800 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-slate-800";
-      playButton.textContent = "Odtwórz zdanie";
+      const playButton = createPlayButton("Odtwórz zdanie");
       playButton.addEventListener("click", () => callbacks.onSpeakSentence(sentence, sentenceElement));
       controls.append(sentenceLabel, playButton);
 
       const textContainer = document.createElement(block.type === "heading" ? `h${block.level ?? 1}` : "p");
-      textContainer.className = block.type === "heading" ? "mb-2" : "m-0";
+      textContainer.className =
+        block.type === "heading"
+          ? block.level === 1
+            ? "mb-2 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl"
+            : "mb-2 mt-2 text-xl font-semibold text-slate-800 dark:text-slate-100 sm:text-2xl"
+          : "m-0";
       const tokensContainer = document.createElement("span");
       tokensContainer.className = "flex flex-wrap items-end";
       sentence.tokens.forEach((token, tokenIndex) => {
@@ -68,6 +80,19 @@ export function renderDocument(
 
     reader.append(blockElement);
   });
+}
+
+const playIcon =
+  '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4"><path d="M8 5.14v13.72a1 1 0 0 0 1.53.85l10.3-6.86a1 1 0 0 0 0-1.7L9.53 4.29A1 1 0 0 0 8 5.14Z"/></svg>';
+
+function createPlayButton(label: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "play-audio-button";
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.innerHTML = playIcon;
+  return button;
 }
 
 function createToken(

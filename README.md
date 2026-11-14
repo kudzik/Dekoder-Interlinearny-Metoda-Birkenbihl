@@ -28,8 +28,8 @@ Domyślnie używany jest `gemini-3.5-flash-lite` z minimalnym poziomem „thinki
 
 ## Funkcje
 
-- Import i przeciąganie plików `.md`, `.markdown` i `.txt`, pole Markdown, przykład oraz trzy tryby nauki.
-- Gemini TTS z wyborem brytyjskiego lub amerykańskiego akcentu, tempem 0.6–1.2 oraz odtwarzaniem tokenu, zdania i całego tekstu. Wymaga połączenia z Internetem; lokalny eksport HTML pozostaje offline i korzysta z głosów systemowych.
+- Import i przeciąganie plików `.md`, `.markdown` i `.txt`, pole Markdown, gotowa próbka dostępna bez API oraz trzy tryby nauki.
+- Gemini TTS z wyborem brytyjskiego lub amerykańskiego akcentu oraz systemowe głosy angielskie przeglądarki. Oba warianty obsługują tempo 0.6–1.2 i odtwarzanie tokenu, zdania, fragmentu i całego tekstu; głosy systemowe są szybsze i działają lokalnie. Eksport HTML pozostaje offline i korzysta z głosów systemowych.
 - Tłumaczenie naturalne na żądanie, glosy gramatyczne, eksport Markdown `<ruby>` i samodzielny HTML bez zasobów zewnętrznych.
 - Ostatnie 10 lekcji w `localStorage`; cache jest wersjonowany, walidowany i pozostaje na danym urządzeniu.
 

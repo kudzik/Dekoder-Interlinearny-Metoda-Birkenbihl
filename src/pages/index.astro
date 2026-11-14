@@ -5,78 +5,133 @@ import AppLayout from "../layouts/AppLayout.astro";
 <AppLayout>
   <header class="sticky top-0 z-10 border-b border-stone-200 bg-[#FAF9F6]/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-bold tracking-tight">Dekoder Interlinearny</h1>
-        <p class="text-sm text-slate-600 dark:text-slate-300">Metoda Birkenbihl — angielski słowo po słowie</p>
+      <div class="flex items-center gap-3">
+        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 font-serif text-xl font-bold text-white shadow-sm">B</span>
+        <div>
+          <h1 class="flex flex-wrap items-center gap-2 text-lg font-bold tracking-tight sm:text-xl">
+            Dekoder Interlinearny
+            <span class="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">Metoda Birkenbihl</span>
+          </h1>
+          <p class="hidden text-xs text-slate-600 dark:text-slate-300 sm:block">Nauka angielskiego poprzez dekodowanie słowo w słowo i aktywne słuchanie</p>
+        </div>
       </div>
-      <div class="flex gap-2">
-        <button id="guide-toggle" class="rounded-lg border px-3 py-2 text-sm">Jak się uczyć?</button>
-        <button id="theme-toggle" class="rounded-lg border px-3 py-2 text-sm" aria-label="Zmień motyw">Motyw</button>
+      <div class="flex items-center gap-2">
+        <button id="guide-toggle" class="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-medium transition hover:bg-stone-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 sm:text-sm">
+          Jak się uczyć?
+          <svg id="guide-chevron" aria-hidden="true" class="h-4 w-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7" /></svg>
+        </button>
+        <button id="theme-toggle" class="rounded-lg border border-stone-300 bg-white p-2 transition hover:bg-stone-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700" aria-label="Zmień motyw">
+          <svg aria-hidden="true" class="hidden h-5 w-5 text-amber-400 dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.36 6.36-.7-.7M6.34 6.34l-.7-.7m12.72 0-.7.7m-11.32 11.32-.7.7M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" /></svg>
+          <svg aria-hidden="true" class="h-5 w-5 text-slate-700 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.35 15.35A9 9 0 0 1 8.65 3.65 9 9 0 1 0 20.35 15.35Z" /></svg>
+        </button>
       </div>
     </div>
-    <aside id="guide-panel" class="mx-auto mt-3 hidden max-w-6xl rounded-lg bg-amber-50 p-3 text-sm dark:bg-slate-800">
-      Najpierw czytaj dosłowne glosy nad angielskimi słowami, potem słuchaj tekstu i sprawdź się w trybie testu.
+    <aside id="guide-panel" class="mx-auto mt-3 hidden max-w-6xl border-t border-stone-200 bg-amber-50/70 py-4 dark:border-slate-800 dark:bg-slate-800/80">
+      <div class="grid gap-3 text-xs sm:grid-cols-2 sm:text-sm lg:grid-cols-4">
+        <div class="rounded-xl border border-amber-200/70 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-900/70">
+          <h2 class="mb-1 font-bold text-teal-700 dark:text-teal-400">1. Dekodowanie</h2>
+          <p class="text-slate-600 dark:text-slate-300">Czytaj dosłowne glosy nad słowami, by oswoić się z angielską składnią.</p>
+        </div>
+        <div class="rounded-xl border border-amber-200/70 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-900/70">
+          <h2 class="mb-1 font-bold text-teal-700 dark:text-teal-400">2. Aktywne słuchanie</h2>
+          <p class="text-slate-600 dark:text-slate-300">Słuchaj zdania i śledź wzrokiem polskie znaczenia.</p>
+        </div>
+        <div class="rounded-xl border border-amber-200/70 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-900/70">
+          <h2 class="mb-1 font-bold text-teal-700 dark:text-teal-400">3. Pasywne słuchanie</h2>
+          <p class="text-slate-600 dark:text-slate-300">Wracaj do znanego tekstu i osłuchuj się z melodią języka.</p>
+        </div>
+        <div class="rounded-xl border border-amber-200/70 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-900/70">
+          <h2 class="mb-1 font-bold text-teal-700 dark:text-teal-400">4. Test / Active Recall</h2>
+          <p class="text-slate-600 dark:text-slate-300">Ukryj polskie glosy i sprawdź, co pamiętasz.</p>
+        </div>
+      </div>
     </aside>
   </header>
 
-  <main class="mx-auto max-w-6xl space-y-5 px-4 py-6">
-    <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 class="font-semibold">1. Wczytaj Markdown lub wklej tekst</h2>
+  <main class="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:px-6">
+    <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm transition-all dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full bg-teal-500"></span>
+          <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">1. Wczytaj plik Markdown lub wklej tekst po angielsku</h2>
+        </div>
         <div class="flex gap-2">
-          <button id="load-example" class="rounded-lg bg-stone-100 px-3 py-1.5 text-sm dark:bg-slate-800">Załaduj przykład</button>
-          <button id="clear-input" class="rounded-lg px-3 py-1.5 text-sm">Wyczyść</button>
+          <button id="load-example" class="rounded-lg bg-stone-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-stone-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">Załaduj przykład</button>
+          <button id="clear-input" class="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400">Wyczyść</button>
         </div>
       </div>
-      <div class="grid gap-3 lg:grid-cols-3">
-        <label id="dropzone" class="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 p-4 text-center text-sm hover:border-teal-600 dark:border-slate-600">
-          <span>Upuść plik .md/.txt lub kliknij, aby wybrać</span>
-          <span id="file-name" class="mt-1 text-xs text-slate-500">Zachowujemy nagłówki, akapity i listy</span>
+      <div class="grid gap-4 lg:grid-cols-3">
+        <label id="dropzone" class="group flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 p-5 text-center transition hover:border-teal-500 hover:bg-teal-50/40 dark:border-slate-600 dark:hover:border-teal-400 dark:hover:bg-teal-950/20">
+          <span class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 text-teal-600 transition-transform group-hover:scale-105 dark:bg-teal-900/50 dark:text-teal-300">
+            <svg aria-hidden="true" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.9A5 5 0 0 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
+          </span>
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Kliknij lub upuść plik <strong class="text-teal-700 dark:text-teal-300">.md</strong> / <strong class="text-teal-700 dark:text-teal-300">.txt</strong></span>
+          <span id="file-name" class="mt-1 text-xs text-slate-500 dark:text-slate-400">Zachowujemy nagłówki, akapity i listy</span>
           <input id="file-input" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" class="sr-only" />
         </label>
-        <textarea id="markdown-input" rows="6" class="rounded-xl border border-stone-300 bg-[#FAF9F6] p-3 font-mono text-sm dark:border-slate-600 dark:bg-slate-950 lg:col-span-2" placeholder="Wklej angielski tekst w Markdown..."></textarea>
+        <textarea id="markdown-input" rows="6" class="resize-y rounded-xl border border-stone-300 bg-[#FAF9F6] p-3.5 font-mono text-sm text-slate-800 transition focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200 lg:col-span-2" placeholder="Wklej tutaj angielski tekst w formacie Markdown..."></textarea>
       </div>
-      <div class="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-3 dark:border-slate-700">
-        <p class="max-w-2xl text-xs text-slate-600 dark:text-slate-300">Tekst zostanie wysłany do Gemini w celu dekodowania. Nie wklejaj treści poufnych.</p>
-        <button id="decode-button" class="rounded-xl bg-teal-700 px-5 py-2.5 font-semibold text-white hover:bg-teal-800 disabled:opacity-60">Dekoduj tekst (AI)</button>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4 dark:border-slate-700">
+        <p class="flex max-w-2xl items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+          <svg aria-hidden="true" class="h-4 w-4 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+          AI grupuje <em>phrasal verbs</em> i idiomy oraz tworzy dosłowne glosy. Nie wklejaj treści poufnych.
+        </p>
+        <button id="decode-button" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.99] disabled:opacity-60 sm:w-auto">
+          <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15.4a2 2 0 0 0-1-.5l-2.4-.5a6 6 0 0 0-3.9.5l-.3.2a6 6 0 0 1-3.9.5l-1.9-.4a2 2 0 0 0-1.8.5M8 4h8l-1 1v5.2a2 2 0 0 0 .6 1.4l5 5a2 2 0 0 1-1.4 3.4H4.8a2 2 0 0 1-1.4-3.4l5-5A2 2 0 0 0 9 10.2V5L8 4Z" /></svg>
+          <span data-decode-label>Dekoduj tekst (AI)</span>
+        </button>
       </div>
       <p id="status-message" role="status" aria-live="polite" class="mt-3 text-sm"></p>
     </section>
 
     <section id="workspace" class="hidden space-y-4">
-      <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
-        <div class="flex flex-wrap gap-2" role="group" aria-label="Tryb nauki">
-          <button class="mode-button rounded-lg bg-teal-100 px-3 py-2 text-sm text-teal-900" data-mode="decode">Dekodowanie</button>
-          <button class="mode-button rounded-lg px-3 py-2 text-sm" data-mode="listen">Aktywne słuchanie</button>
-          <button class="mode-button rounded-lg px-3 py-2 text-sm" data-mode="test">Test / Active Recall</button>
+      <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex w-fit flex-wrap gap-1.5 rounded-xl bg-stone-100 p-1 dark:bg-slate-800" role="group" aria-label="Tryb nauki">
+          <button class="mode-button rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-teal-700 shadow-sm transition dark:bg-slate-700 dark:text-teal-300 sm:text-sm" data-mode="decode" aria-pressed="true">Tryb dekodowania</button>
+          <button class="mode-button rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white sm:text-sm" data-mode="listen" aria-pressed="false">Aktywne słuchanie</button>
+          <button class="mode-button rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white sm:text-sm" data-mode="test" aria-pressed="false">Test / Ukryj tłumaczenie</button>
         </div>
         <div class="flex flex-wrap items-center gap-3">
-          <label class="flex items-center gap-2 text-sm">Głos
-            <select id="voice-select" class="max-w-48 rounded border bg-white p-1.5 text-sm dark:bg-slate-800" aria-label="Wybierz głos"></select>
+          <label class="flex items-center gap-1.5 text-sm">
+            <svg aria-hidden="true" class="h-4 w-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 8.5a5 5 0 0 1 0 7m2.8-9.8a9 9 0 0 1 0 12.7M5.6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h1.6l4.7-4.7A1 1 0 0 1 12 5v14a1 1 0 0 1-1.7.7L5.6 15Z" /></svg>
+            <span class="sr-only">Lektor</span>
+            <select id="voice-select" class="max-w-56 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 sm:text-sm" aria-label="Wybierz głos lektora"></select>
           </label>
-          <label class="flex items-center gap-2 text-sm">Tempo
-            <select id="rate-select" class="rounded border bg-white p-1.5 text-sm dark:bg-slate-800" aria-label="Prędkość czytania">
+          <label class="flex items-center gap-1.5 rounded-lg bg-stone-100 px-2.5 py-1 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            Tempo
+            <select id="rate-select" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none dark:text-slate-200 sm:text-sm" aria-label="Prędkość czytania">
               <option value="0.6">0.6x</option>
               <option value="0.8">0.8x</option>
               <option value="1" selected>1.0x</option>
               <option value="1.2">1.2x</option>
             </select>
           </label>
-          <button id="play-all" class="rounded-lg bg-teal-100 px-3 py-2 text-sm text-teal-900">Czytaj całość</button>
+          <button id="play-all" class="play-all inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 transition hover:bg-teal-100 dark:bg-teal-900/40 dark:text-teal-300 dark:hover:bg-teal-900/60 sm:text-sm" aria-pressed="false">
+            <svg aria-hidden="true" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM9.6 7.2A1 1 0 0 0 8 8v4a1 1 0 0 0 1.6.8l3-2a1 1 0 0 0 0-1.6l-3-2Z" clip-rule="evenodd" /></svg>
+            <span data-play-label>Czytaj całość</span>
+          </button>
         </div>
       </div>
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <label class="flex items-center gap-2 text-sm">
-          <input id="show-natural" type="checkbox" />
+        <label class="flex cursor-pointer select-none items-center gap-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 sm:text-sm">
+          <input id="show-natural" type="checkbox" class="peer sr-only" />
+          <span aria-hidden="true" class="relative h-5 w-9 rounded-full bg-stone-300 transition after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-transform after:content-[''] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-teal-500 peer-checked:bg-teal-600 peer-checked:after:translate-x-4 peer-checked:after:border-white dark:bg-slate-700 dark:after:border-slate-500"></span>
           Pokaż naturalne tłumaczenie zdań
         </label>
         <span id="test-counter" class="text-sm text-slate-600 dark:text-slate-300"></span>
-        <div class="flex gap-2">
-          <button id="export-md" class="rounded-lg border px-3 py-2 text-sm">Eksport Markdown</button>
-          <button id="export-html" class="rounded-lg border px-3 py-2 text-sm">Eksport HTML offline</button>
+        <div class="flex flex-wrap gap-2">
+          <button id="export-md" class="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:text-sm">
+            <svg aria-hidden="true" class="h-4 w-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4" /></svg>
+            Eksport Markdown
+          </button>
+          <button id="export-html" class="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-stone-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:text-sm">
+            <svg aria-hidden="true" class="h-4 w-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m10 20 4-16m4 4 4 4-4 4M6 16l-4-4 4-4" /></svg>
+            Eksport HTML offline
+          </button>
         </div>
       </div>
-      <article id="reader" class="space-y-5 rounded-2xl border border-stone-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900" aria-label="Zdekodowany tekst"></article>
+      <p id="voice-help" class="text-xs text-slate-500 dark:text-slate-400">Gemini zapewnia naturalniejszą wymowę, ale może odpowiadać wolniej. Głosy systemowe pojawią się w menu, jeśli przeglądarka udostępnia angielski głos.</p>
+      <article id="reader" class="space-y-5 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-8" aria-label="Zdekodowany tekst"></article>
     </section>
   </main>
 
