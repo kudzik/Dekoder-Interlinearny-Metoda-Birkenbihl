@@ -22,6 +22,8 @@ const validModelResult = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -39,11 +41,35 @@ describe("decodeWithGemini", () => {
 
     await expect(decodeWithGemini(source, { GEMINI_API_KEY: "test-secret" })).resolves.toEqual(validModelResult);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/models/gemini-2.5-flash:generateContent"),
+      expect.stringContaining("/models/gemini-4-hydrogen:generateContent"),
       expect.objectContaining({
         headers: expect.objectContaining({ "x-goog-api-key": "test-secret" }),
+        body: expect.not.stringContaining('"temperature"'),
       }),
     );
+  });
+
+  it("retries a temporary Gemini 503 before returning the decoded response", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: JSON.stringify(validModelResult) }] } }],
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const decode = decodeWithGemini(source, { GEMINI_API_KEY: "test-secret" });
+    await vi.advanceTimersByTimeAsync(500);
+
+    await expect(decode).resolves.toEqual(validModelResult);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("rejects a response that omits source words", async () => {
@@ -64,6 +90,26 @@ describe("decodeWithGemini", () => {
     await expect(decodeWithGemini(source, { GEMINI_API_KEY: "test-secret" })).rejects.toMatchObject({
       status: 502,
     });
+  });
+
+  it("accepts punctuation differences while preserving source words", async () => {
+    const resultWithDifferentPunctuation = structuredClone(validModelResult);
+    resultWithDifferentPunctuation.blocks[0].sentences[0].tokens[1].en = "am ready";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: JSON.stringify(resultWithDifferentPunctuation) }] } }],
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    await expect(decodeWithGemini(source, { GEMINI_API_KEY: "test-secret" })).resolves.toEqual(
+      resultWithDifferentPunctuation,
+    );
   });
 
   it("does not call Gemini without a configured key", async () => {

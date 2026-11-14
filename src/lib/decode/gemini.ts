@@ -64,8 +64,25 @@ interface GeminiEnvironment {
   GEMINI_MODEL?: string;
 }
 
-function normalizeWhitespace(text: string): string {
-  return text.replace(/\s+/g, "");
+const MAX_GEMINI_ATTEMPTS = 3;
+
+function isRetryableStatus(status: number): boolean {
+  return [408, 429, 500, 502, 503, 504].includes(status);
+}
+
+async function waitBeforeRetry(attempt: number, retryAfter: string | null): Promise<void> {
+  const retryAfterSeconds = Number(retryAfter);
+  const delay =
+    Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? Math.min(retryAfterSeconds * 1_000, 8_000)
+      : 500 * 2 ** attempt + Math.floor(Math.random() * 250);
+  await new Promise<void>((resolve) => setTimeout(resolve, delay));
+}
+
+function normalizeWords(text: string): string[] {
+  return (text.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) ?? []).map((word) =>
+    word.toLocaleLowerCase("en"),
+  );
 }
 
 function assertMatchesSource(source: SourceBlock[], result: DecodedDocument): void {
@@ -89,8 +106,9 @@ function assertMatchesSource(source: SourceBlock[], result: DecodedDocument): vo
         throw new DecodeServiceError("Model zmienił kolejność zdań. Spróbuj ponownie.", 502);
       }
 
-      const decodedEnglish = decodedSentence.tokens.map((token) => token.en).join(" ");
-      if (normalizeWhitespace(decodedEnglish) !== normalizeWhitespace(sourceSentence.text)) {
+      const decodedWords = normalizeWords(decodedSentence.tokens.map((token) => token.en).join(" "));
+      const sourceWords = normalizeWords(sourceSentence.text);
+      if (decodedWords.length !== sourceWords.length || decodedWords.some((word, index) => word !== sourceWords[index])) {
         throw new DecodeServiceError("Model pominął lub zmienił słowa źródłowe. Spróbuj ponownie.", 502);
       }
     });
@@ -105,56 +123,87 @@ export async function decodeWithGemini(
     throw new DecodeServiceError("Usługa dekodowania nie jest skonfigurowana.", 503);
   }
 
-  const model = environment.GEMINI_MODEL || "gemini-2.5-flash";
-  let response: Response;
-  try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+  const model = environment.GEMINI_MODEL || "gemini-4-hydrogen";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const requestBody = JSON.stringify({
+    contents: [
       {
+        role: "user",
+        parts: [{ text: JSON.stringify(source) }],
+      },
+    ],
+    systemInstruction: {
+      parts: [
+        {
+          text: [
+            "Zdekoduj bloki metodą interlinearną Very Birkenbihl.",
+            "Zachowaj kolejność bloków, zdań i wszystkie angielskie znaki oraz słowa.",
+            "Tłumaczenie pl_literal ma odwzorowywać angielski szyk słowo po słowie.",
+            "Łącz phrasal verbs i idiomy w tokeny is_chunk=true.",
+            "Wypełnij natural_pl naturalnym tłumaczeniem danego zdania po polsku.",
+            "Zwróć dokładnie te same id, typy bloków i poziomy nagłówków.",
+          ].join("\n"),
+        },
+      ],
+    },
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: GEMINI_RESPONSE_SCHEMA,
+    },
+  });
+
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < MAX_GEMINI_ATTEMPTS; attempt += 1) {
+    try {
+      response = await fetch(url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "x-goog-api-key": environment.GEMINI_API_KEY,
         },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: JSON.stringify(source) }],
-            },
-          ],
-          systemInstruction: {
-            parts: [
-              {
-                text: [
-                  "Zdekoduj bloki metodą interlinearną Very Birkenbihl.",
-                  "Zachowaj kolejność bloków, zdań i wszystkie angielskie znaki oraz słowa.",
-                  "Tłumaczenie pl_literal ma odwzorowywać angielski szyk słowo po słowie.",
-                  "Łącz phrasal verbs i idiomy w tokeny is_chunk=true.",
-                  "Wypełnij natural_pl naturalnym tłumaczeniem danego zdania po polsku.",
-                  "Zwróć dokładnie te same id, typy bloków i poziomy nagłówków.",
-                ].join("\n"),
-              },
-            ],
-          },
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: "application/json",
-            responseSchema: GEMINI_RESPONSE_SCHEMA,
-          },
-        }),
+        body: requestBody,
         signal: AbortSignal.timeout(45_000),
-      },
-    );
-  } catch {
-    throw new DecodeServiceError("Nie udało się połączyć z dostawcą AI. Spróbuj ponownie.", 502);
+      });
+    } catch {
+      if (attempt === MAX_GEMINI_ATTEMPTS - 1) {
+        throw new DecodeServiceError("Nie udało się połączyć z Gemini API po kilku próbach.", 502);
+      }
+      await waitBeforeRetry(attempt, null);
+      continue;
+    }
+
+    if (response.ok || !isRetryableStatus(response.status) || attempt === MAX_GEMINI_ATTEMPTS - 1) {
+      break;
+    }
+    const retryAfter = response.headers.get("retry-after");
+    await response.body?.cancel();
+    await waitBeforeRetry(attempt, retryAfter);
+  }
+
+  if (!response) {
+    throw new DecodeServiceError("Gemini API nie zwróciło odpowiedzi.", 502);
   }
 
   if (!response.ok) {
     if (response.status === 429) {
-      throw new DecodeServiceError("Limit usługi AI został osiągnięty. Spróbuj ponownie później.", 503);
+      throw new DecodeServiceError("Limit Gemini API został osiągnięty. Sprawdź limity projektu w Google AI Studio.", 503);
     }
-    throw new DecodeServiceError("Dostawca AI nie zdołał zdekodować tekstu.", 502);
+    if (response.status === 401 || response.status === 403) {
+      throw new DecodeServiceError("Klucz Gemini jest nieprawidłowy lub nie ma dostępu do Gemini API.", 503);
+    }
+    if (response.status === 404) {
+      throw new DecodeServiceError("Wybrany model Gemini jest niedostępny. Sprawdź ustawienie GEMINI_MODEL.", 503);
+    }
+    if (response.status === 400) {
+      throw new DecodeServiceError("Gemini odrzuciło format żądania lub schemat odpowiedzi.", 502);
+    }
+    if (isRetryableStatus(response.status)) {
+      throw new DecodeServiceError(
+        `Gemini API jest chwilowo niedostępne (HTTP ${response.status}) po ${MAX_GEMINI_ATTEMPTS} próbach. Spróbuj ponownie za chwilę.`,
+        503,
+      );
+    }
+    throw new DecodeServiceError(`Dostawca AI zwrócił błąd HTTP ${response.status}.`, 502);
   }
 
   let responseBody: unknown;

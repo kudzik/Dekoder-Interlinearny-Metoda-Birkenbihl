@@ -24,7 +24,7 @@ npx wrangler secret put GEMINI_API_KEY
 npm run deploy
 ```
 
-Model można opcjonalnie zmienić przez `GEMINI_MODEL`. Limit endpointu jest skonfigurowany w `wrangler.jsonc` i ogranicza dekodowanie do 10 żądań na minutę z adresu klienta. Limit Cloudflare jest przybliżony i liczony osobno w lokalizacjach Cloudflare.
+Domyślnie używany jest `gemini-4-hydrogen`: model obsługuje Structured Outputs i jest rekomendowaną przez Google aktualizacją dla wcześniejszych modeli Gemini. Błędy przejściowe (m.in. HTTP 503) są ponawiane maksymalnie dwa razy z rosnącym opóźnieniem. Model można opcjonalnie zmienić przez `GEMINI_MODEL`, podając identyfikator dostępny dla danego klucza. Limit endpointu jest skonfigurowany w `wrangler.jsonc` i ogranicza dekodowanie do 10 żądań na minutę z adresu klienta. Limit Cloudflare jest przybliżony i liczony osobno w lokalizacjach Cloudflare.
 
 ## Funkcje
 
