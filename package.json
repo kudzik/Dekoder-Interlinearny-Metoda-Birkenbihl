@@ -1,0 +1,37 @@
+{
+  "name": "dekoder-interlinearny-birkenbihl",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.23.4",
+    "npm": ">=9.6.5"
+  },
+  "scripts": {
+    "dev": "wrangler types --include-runtime=false && astro dev",
+    "check": "wrangler types --include-runtime=false && astro check",
+    "build": "wrangler types --include-runtime=false && astro check && astro build",
+    "preview": "wrangler types --include-runtime=false && wrangler dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "deploy": "wrangler types --include-runtime=false && astro check && astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.4.8",
+    "@tailwindcss/vite": "^4.3.5",
+    "astro": "^7.4.12",
+    "mdast-util-to-string": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "tailwindcss": "^4.3.5",
+    "unified": "^11.0.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.162.0"
+  }
+}
