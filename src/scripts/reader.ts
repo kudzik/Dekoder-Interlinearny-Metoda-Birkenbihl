@@ -32,7 +32,7 @@ export function renderDocument(
     }
 
     const blockControls = document.createElement("div");
-    blockControls.className = "mb-1 flex justify-end";
+    blockControls.className = "mb-2 flex items-center justify-end gap-2";
     const playBlockButton = createPlayButton("Odtwórz fragment");
     playBlockButton.classList.add("play-block-button");
     playBlockButton.innerHTML = `${playIcon}<span>Fragment</span>`;
@@ -40,19 +40,23 @@ export function renderDocument(
     blockControls.append(playBlockButton);
     blockElement.append(blockControls);
 
-    block.sentences.forEach((sentence) => {
+    block.sentences.forEach((sentence, sentenceIndex) => {
       const sentenceElement = document.createElement("section");
       sentenceElement.className = "decoded-sentence";
       sentenceElement.dataset.sentenceId = sentence.id;
 
       const controls = document.createElement("div");
-      controls.className = "mb-2 flex items-center justify-between gap-2";
+      controls.className = "sentence-controls";
       const sentenceLabel = document.createElement("span");
       sentenceLabel.className = "sr-only";
       sentenceLabel.textContent = `Zdanie ${sentence.id}`;
       const playButton = createPlayButton("Odtwórz zdanie");
       playButton.addEventListener("click", () => callbacks.onSpeakSentence(sentence, sentenceElement));
-      controls.append(sentenceLabel, playButton);
+      if (sentenceIndex === 0) {
+        blockControls.append(sentenceLabel, playButton);
+      } else {
+        controls.append(sentenceLabel, playButton);
+      }
 
       const textContainer = document.createElement(block.type === "heading" ? `h${block.level ?? 1}` : "p");
       textContainer.className =
@@ -61,11 +65,12 @@ export function renderDocument(
             ? "mb-2 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl"
             : "mb-2 mt-2 text-xl font-semibold text-slate-800 dark:text-slate-100 sm:text-2xl"
           : "m-0";
+      textContainer.classList.add("sentence-text");
       const tokensContainer = document.createElement("span");
-      tokensContainer.className = "flex flex-wrap items-end";
+      tokensContainer.className = "token-row flex flex-wrap items-end";
       sentence.tokens.forEach((token, tokenIndex) => {
         const key = `${sentence.id}-${tokenIndex}`;
-        tokensContainer.append(createToken(token, key, callbacks));
+        tokensContainer.append(createToken(token, key, mode, callbacks));
       });
       textContainer.append(tokensContainer);
 
@@ -74,7 +79,11 @@ export function renderDocument(
       naturalTranslation.hidden = !showNatural;
       naturalTranslation.textContent = `Tłumaczenie naturalne: ${sentence.natural_pl}`;
 
-      sentenceElement.append(controls, textContainer, naturalTranslation);
+      if (sentenceIndex > 0) {
+        sentenceElement.classList.add("decoded-sentence-with-control");
+        sentenceElement.append(controls);
+      }
+      sentenceElement.append(textContainer, naturalTranslation);
       blockElement.append(sentenceElement);
     });
 
@@ -98,14 +107,22 @@ function createPlayButton(label: string): HTMLButtonElement {
 function createToken(
   token: DecodedToken,
   tokenKey: string,
+  mode: "decode" | "listen" | "test",
   callbacks: ReaderCallbacks,
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = `token${token.is_chunk ? " token-chunk" : ""}`;
   button.dataset.tokenKey = tokenKey;
-  button.setAttribute("aria-label", `${token.en}: ${token.pl_literal}${token.grammar ? `. ${token.grammar}` : ""}`);
-  button.title = [token.en, token.pl_literal, token.grammar].filter(Boolean).join(" — ");
+  const setAccessibleLabel = () => {
+    const revealed = callbacks.isRevealed(tokenKey);
+    const glossIsHidden = mode === "test" && !revealed;
+    const description = `${token.en}: ${token.pl_literal}${token.grammar ? `. ${token.grammar}` : ""}`;
+    button.setAttribute("aria-label", glossIsHidden ? `${token.en}: glosa ukryta` : description);
+    button.title = glossIsHidden ? `${token.en}: glosa ukryta` : description;
+    if (mode === "test") button.setAttribute("aria-pressed", String(revealed));
+  };
+  setAccessibleLabel();
   if (callbacks.isRevealed(tokenKey)) button.classList.add("revealed");
 
   const gloss = document.createElement("span");
@@ -119,17 +136,27 @@ function createToken(
   button.addEventListener("click", () => {
     callbacks.onReveal(tokenKey);
     button.classList.toggle("revealed", callbacks.isRevealed(tokenKey));
+    setAccessibleLabel();
     callbacks.onSpeakToken(token.en, button);
     showGrammar(token, button);
   });
   button.addEventListener("mouseenter", () => {
     callbacks.onHoverToken(tokenKey);
+    button.classList.toggle("revealed", callbacks.isRevealed(tokenKey));
+    setAccessibleLabel();
     showGrammar(token, button);
   });
   button.addEventListener("mouseleave", () => {
     if (document.activeElement !== button) hideGrammar();
   });
-  button.addEventListener("focus", () => showGrammar(token, button));
+  button.addEventListener("focus", () => {
+    if (mode === "test") {
+      callbacks.onHoverToken(tokenKey);
+      button.classList.toggle("revealed", callbacks.isRevealed(tokenKey));
+      setAccessibleLabel();
+    }
+    showGrammar(token, button);
+  });
   button.addEventListener("blur", hideGrammar);
   return button;
 }
@@ -137,14 +164,59 @@ function createToken(
 function showGrammar(token: DecodedToken, anchor: HTMLElement): void {
   const popover = document.getElementById("grammar-popover");
   if (!popover) return;
-  popover.textContent = [token.en, token.pl_literal, token.grammar].filter(Boolean).join(" — ");
+
+  const header = document.createElement("div");
+  header.className = "grammar-popover-header";
+  const title = document.createElement("strong");
+  title.className = "grammar-popover-title";
+  title.textContent = token.en;
+  header.append(title);
+  if (token.is_chunk) {
+    const badge = document.createElement("span");
+    badge.className = "grammar-popover-badge";
+    badge.textContent = "Zbitka / idiom";
+    header.append(badge);
+  }
+
+  const gloss = document.createElement("p");
+  gloss.className = "grammar-popover-gloss";
+  gloss.textContent = `Dosłownie: „${token.pl_literal}”`;
+  popover.replaceChildren(header, gloss);
+  if (token.grammar) {
+    const grammar = document.createElement("p");
+    grammar.className = "grammar-popover-grammar";
+    grammar.textContent = token.grammar;
+    popover.append(grammar);
+  }
+
+  popover.style.left = "0px";
+  popover.style.top = "0px";
   popover.hidden = false;
   const rect = anchor.getBoundingClientRect();
-  popover.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 300))}px`;
-  popover.style.top = `${Math.max(8, rect.top - popover.offsetHeight - 8)}px`;
+  const popoverRect = popover.getBoundingClientRect();
+  const edge = 8;
+  const gap = 8;
+  const left = Math.max(
+    edge,
+    Math.min(rect.left + (rect.width - popoverRect.width) / 2, window.innerWidth - popoverRect.width - edge),
+  );
+  const above = rect.top - popoverRect.height - gap;
+  const below = rect.bottom + gap;
+  const top =
+    above >= edge
+      ? above
+      : below + popoverRect.height <= window.innerHeight - edge
+        ? below
+        : Math.max(edge, Math.min(above, window.innerHeight - popoverRect.height - edge));
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+
 }
 
 function hideGrammar(): void {
   const popover = document.getElementById("grammar-popover");
   if (popover) popover.hidden = true;
 }
+
+window.addEventListener("scroll", hideGrammar, { capture: true, passive: true });
+window.addEventListener("resize", hideGrammar);

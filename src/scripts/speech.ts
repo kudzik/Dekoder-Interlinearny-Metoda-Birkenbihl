@@ -30,7 +30,10 @@ export class SpeechController {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.addEventListener("voiceschanged", () => this.loadVoices());
     }
-    this.voiceSelect.addEventListener("change", () => this.stop());
+    this.voiceSelect.addEventListener("change", () => {
+      this.stop();
+      this.clearSpeechStatus();
+    });
   }
 
   stop(): void {
@@ -81,7 +84,8 @@ export class SpeechController {
     try {
       for (const item of sentences) {
         if (run !== this.sequence) break;
-        item.element.scrollIntoView({ behavior: "smooth", block: "center" });
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        item.element.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" });
         await this.playSentence(item.sentence, item.element, run);
         if (run === this.sequence) await new Promise((resolve) => setTimeout(resolve, 250));
       }
@@ -97,7 +101,13 @@ export class SpeechController {
 
   private begin(): number {
     this.stop();
+    this.clearSpeechStatus();
     return this.sequence;
+  }
+
+  private clearSpeechStatus(): void {
+    const status = document.getElementById("speech-status");
+    if (status) status.textContent = "";
   }
 
   private loadVoices(): void {
@@ -351,7 +361,7 @@ export class SpeechController {
 
   private showError(error: unknown, run: number): void {
     if (run !== this.sequence || (error instanceof DOMException && error.name === "AbortError")) return;
-    const status = document.getElementById("status-message");
+    const status = document.getElementById("speech-status");
     if (status) {
       status.textContent = error instanceof Error ? error.message : "Wystąpił nieznany błąd syntezy mowy.";
     }

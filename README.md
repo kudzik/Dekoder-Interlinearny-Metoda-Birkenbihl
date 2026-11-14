@@ -33,8 +33,19 @@ Domyślnie używany jest `gemini-3.5-flash-lite` z minimalnym poziomem „thinki
 - Tłumaczenie naturalne na żądanie, glosy gramatyczne, eksport Markdown `<ruby>` i samodzielny HTML bez zasobów zewnętrznych.
 - Ostatnie 10 lekcji w `localStorage`; cache jest wersjonowany, walidowany i pozostaje na danym urządzeniu.
 
-Tekst wysłany do dekodowania trafia do Gemini. Nie wklejaj do aplikacji treści poufnych. Wyniki modelu są walidowane i niepoprawne odpowiedzi nie są pokazywane jako poprawne tłumaczenia.
-Tekst wysłany do syntezy mowy również trafia do Gemini. Endpoint TTS ma osobny limit 60 żądań na minutę z adresu klienta; powtarzane odtworzenia w tej samej karcie korzystają z krótkotrwałego cache'u w pamięci.
+### Głosy i prywatność
+
+Gemini TTS wysyła tekst wybranego tokenu, zdania lub fragmentu do Gemini; pełne czytanie wysyła tekst kolejno zdanie po zdaniu. Odtworzone audio jest buforowane tylko w pamięci karty (do 32 ostatnich pozycji). Endpoint ma osobny limit 60 żądań na minutę z adresu klienta. Głos systemowy nie wysyła tekstu do serwera i zwykle zaczyna czytać szybciej.
+
+Lista głosów systemowych pochodzi z przeglądarki i systemu operacyjnego. Jeśli nie ma w niej głosu z językiem `en-*`, aplikacja wyłącza tę opcję zamiast użyć głosu polskiego do czytania angielskiego. Zainstaluj angielski głos w ustawieniach systemu i odśwież stronę. Przycisk czytania fragmentu/zdania odtwarza dany zakres, a „Czytaj całość” odtwarza zdania po kolei; zatrzymanie przerywa bieżący dźwięk lub żądanie.
+
+Tekst wysłany do dekodowania również trafia do Gemini. Nie wklejaj do aplikacji treści poufnych. Wyniki modelu są walidowane, a błędne odpowiedzi nie są pokazywane jako poprawne tłumaczenia. Gotowa próbka jest statycznym przykładem, nie wynikiem świeżego żądania. Aplikacja nie używa automatycznego „awaryjnego tłumacza” — takie podstawienia mogłyby wyglądać jak poprawne glosy.
+
+### Obsługa i dostępność
+
+- Układ dopasowuje się do telefonów, tabletów i dużych ekranów; przyciski mają widoczny fokus klawiatury, a interfejs respektuje ustawienie ograniczenia animacji.
+- W trybie testu glosa pozostaje ukryta również w nazwie dostępności tokenu, dopóki użytkownik jej nie odkryje. Kliknięcie/klawiatura działa także na urządzeniach bez hovera.
+- Motyw, tryby nauki, naturalne tłumaczenie i eksport są dostępne z klawiatury. W przeglądarce bez głosów systemowych nadal można używać Gemini TTS.
 
 ## Obsługiwany Markdown
 
@@ -49,4 +60,4 @@ npm run build
 npm run test:e2e
 ```
 
-Testy E2E mockują endpoint Gemini, więc nie potrzebują prawdziwego klucza ani nie zużywają tokenów.
+Testy E2E uruchamiają interfejs w Chromium, mockują endpointy AI i głosy systemowe, więc nie potrzebują prawdziwego klucza ani nie zużywają tokenów. Sprawdzają dekodowanie i cache, oba eksporty, Gemini oraz lokalne odtwarzanie, komunikaty błędów, tryby pomocy/motywu, fokus klawiatury, dotykowe odkrywanie glos i brak poziomego przewijania przy szerokościach 320, 360, 390, 768, 1024 i 1440 px.
