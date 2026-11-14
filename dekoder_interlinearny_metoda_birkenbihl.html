@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dekoder Interlinearny – Metoda Birkenbihl</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Lora', 'Georgia', 'serif'],
+          },
+          colors: {
+            paper: '#FAF9F6',
+            ink: '#1E293B',
+            accent: '#0D9488',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Płynne przejścia i stylistyka czytelnicza */
+    body {
+      background-color: #FAF9F6;
+      color: #1E293B;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+    html.dark body {
+      background-color: #0F172A;
+      color: #F1F5F9;
+    }
+
+    /* Bloki interlinearne (Słowo nad słowem) */
+    .word-token {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-right: 0.55rem;
+      margin-bottom: 0.75rem;
+      padding: 0.15rem 0.25rem;
+      border-radius: 0.375rem;
+      vertical-align: bottom;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    .word-token:hover {
+      background-color: rgba(13, 148, 136, 0.1);
+    }
+    html.dark .word-token:hover {
+      background-color: rgba(45, 212, 191, 0.15);
+    }
+
+    /* Polskie tłumaczenie dosłowne (nad angielskim) */
+    .gloss-pl {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.74rem;
+      line-height: 1.2;
+      font-weight: 500;
+      color: #0F766E;
+      margin-bottom: 0.15rem;
+      user-select: none;
+      transition: filter 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+    }
+    html.dark .gloss-pl {
+      color: #5EEAD4;
+    }
+
+    /* Oryginał angielski */
+    .word-en {
+      font-family: 'Lora', serif;
+      font-size: 1.15rem;
+      line-height: 1.35;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    /* Zbitki (Phrasal verbs / Idiomy) */
+    .is-chunk {
+      border-bottom: 2px dashed #D97706;
+      background-color: rgba(245, 158, 11, 0.07);
+    }
+    html.dark .is-chunk {
+      border-bottom-color: #FBBF24;
+      background-color: rgba(251, 191, 36, 0.1);
+    }
+
+    /* Tryb Testu (ukrycie polskiego tłumaczenia) */
+    .mode-test .gloss-pl {
+      filter: blur(5px);
+      opacity: 0.35;
+    }
+    .mode-test .word-token:hover .gloss-pl,
+    .mode-test .word-token.revealed .gloss-pl {
+      filter: blur(0);
+      opacity: 1;
+    }
+
+    /* Tryb Aktywnego Słuchania */
+    .mode-listen .gloss-pl {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #B45309;
+    }
+    html.dark .mode-listen .gloss-pl {
+      color: #FCD34D;
+    }
+    .mode-listen .word-en {
+      opacity: 0.72;
+    }
+
+    /* Podświetlenie aktualnie czytanego słowa / zdania */
+    .speaking-sentence {
+      background-color: rgba(13, 148, 136, 0.06);
+      border-left: 3px solid #0D9488;
+    }
+    html.dark .speaking-sentence {
+      background-color: rgba(45, 212, 191, 0.08);
+      border-left-color: #2DD4BF;
+    }
+    .speaking-word {
+      background-color: #CCFBF1 !important;
+      transform: translateY(-2px);
+      box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);
+    }
+    html.dark .speaking-word {
+      background-color: #115E59 !important;
+    }
+
+    /* Niestandardowy scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 4px;
+    }
+    html.dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-teal-200 selection:text-teal-900">
+
+  <!-- Pasek powiadomień (Toast) zamiast alert() -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Nagłówek aplikacji -->
+  <header class="sticky top-0 z-30 backdrop-blur-md bg-[#FAF9F6]/90 dark:bg-slate-900/90 border-b border-stone-200 dark:border-slate-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-sm font-serif font-bold text-xl">
+          B
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            Dekoder Interlinearny
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">
+              Metoda Birkenbihl
+            </span>
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+            Nauka angielskiego poprzez dekodowanie słowo w słowo i aktywne słuchanie
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Przełącznik instrukcji -->
+        <button id="toggle-guide-btn" class="px-3 py-2 text-xs sm:text-sm font-medium rounded-lg border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-stone-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+          <span>Jak się uczyć?</span>
+          <svg id="guide-chevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+        <!-- Przełącznik trybu ciemnego/jasnego -->
+        <button id="theme-toggle" aria-label="Zmień motyw" class="p-2 rounded-lg border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-stone-100 dark:hover:bg-slate-700 transition">
+          <svg id="sun-icon" class="w-5 h-5 hidden dark:block text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+          </svg>
+          <svg id="moon-icon" class="w-5 h-5 block dark:hidden text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Rozwijany baner: 4 kroki metody Birkenbihl -->
+    <div id="guide-panel" class="hidden border-t border-stone-200 dark:border-slate-800 bg-amber-50/70 dark:bg-slate-800/80">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs sm:text-sm">
+          <div class="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-amber-200/70 dark:border-slate-700">
+            <div class="font-bold text-teal-700 dark:text-teal-400 mb-1">1. Dekodowanie (Słowo w słowo)</div>
+            <p class="text-slate-600 dark:text-slate-300">Tłumaczysz dosłownie (np. <em>„Ja jestem patrzący”</em>), aby bez wkuwania reguł oswoić angielską składnię.</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-amber-200/70 dark:border-slate-700">
+            <div class="font-bold text-teal-700 dark:text-teal-400 mb-1">2. Aktywne słuchanie</div>
+            <p class="text-slate-600 dark:text-slate-300">Włączasz lektora i <strong>patrzysz na polski tekst nad angielskim</strong>. Mózg łączy dźwięk obcego słowa z jego znaczeniem.</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-amber-200/70 dark:border-slate-700">
+            <div class="font-bold text-teal-700 dark:text-teal-400 mb-1">3. Pasywne słuchanie</div>
+            <p class="text-slate-600 dark:text-slate-300">Gdy rozumiesz każde słowo, puszczasz nagranie cicho w tle podczas codziennych czynności, chłonąc melodię języka.</p>
+          </div>
+          <div class="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-amber-200/70 dark:border-slate-700">
+            <div class="font-bold text-teal-700 dark:text-teal-400 mb-1">4. Mówienie / Czytanie</div>
+            <p class="text-slate-600 dark:text-slate-300">Przełącz na <em>Tryb Testu</em>, ukryj polskie podpisy i sprawdzaj, czy rozumiesz tekst bez podpowiedzi.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Główny kontener -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Sekcja 1: Wprowadzanie pliku Markdown / Tekstu -->
+    <section id="input-section" class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 transition-all">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+          <h2 class="font-semibold text-base sm:text-lg text-slate-800 dark:text-slate-100">
+            1. Wczytaj plik Markdown (.md) lub wklej tekst po angielsku
+          </h2>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="load-example-btn" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition">
+            Załaduj przykład
+          </button>
+          <button id="clear-input-btn" class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition">
+            Wyczyść
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Strefa przeciągnij i upuść (Dropzone) -->
+        <div id="dropzone" class="lg:col-span-1 border-2 border-dashed border-stone-300 dark:border-slate-700 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer hover:border-teal-500 dark:hover:border-teal-400 hover:bg-teal-50/40 dark:hover:bg-teal-950/20 transition group">
+          <input type="file" id="file-input" accept=".md,.txt,.markdown" class="hidden" />
+          <div class="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-300 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Kliknij lub upuść plik <span class="text-teal-600 dark:text-teal-400 font-semibold">.md</span> / <span class="text-teal-600 dark:text-teal-400 font-semibold">.txt</span>
+          </p>
+          <p id="file-name-badge" class="text-xs text-slate-400 dark:text-slate-500 mt-1">
+            Zachowuje nagłówki i strukturę akapitów
+          </p>
+        </div>
+
+        <!-- Pole tekstowe Markdown -->
+        <div class="lg:col-span-2 flex flex-col">
+          <textarea
+            id="markdown-input"
+            rows="6"
+            placeholder="Wklej tutaj angielski tekst w formacie Markdown..."
+            class="w-full flex-1 rounded-xl border border-stone-300 dark:border-slate-700 bg-[#FAF9F6] dark:bg-slate-950 p-3.5 text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 transition resize-y"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Pasek akcji dekodowania -->
+      <div class="mt-4 pt-4 border-t border-stone-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>AI automatycznie grupuje <em>phrasal verbs</em> oraz idiomy i generuje dosłowne tłumaczenie słowo w słowo.</span>
+        </div>
+
+        <button id="decode-btn" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white font-semibold text-sm shadow-sm shadow-teal-600/20 transition flex items-center justify-center gap-2">
+          <svg id="decode-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+          </svg>
+          <svg id="decode-spinner" class="w-4 h-4 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span id="decode-btn-text">Dekoduj tekst (AI)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Sekcja 2: Panel sterowania nauką i odtwarzaczem (widoczny po zdekodowaniu) -->
+    <section id="workspace-section" class="space-y-4">
+      <!-- Pasek narzędzi nauki -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        
+        <!-- Przełączniki trybów widoku -->
+        <div class="flex flex-wrap items-center gap-1.5 bg-stone-100 dark:bg-slate-800 p-1 rounded-xl">
+          <button data-mode="decode" class="mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-sm transition">
+            Tryb dekodowania
+          </button>
+          <button data-mode="listen" class="mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">
+            Aktywne słuchanie
+          </button>
+          <button data-mode="test" class="mode-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">
+            Test / Ukryj tłumaczenie
+          </button>
+        </div>
+
+        <!-- Kontrola audio (Lektor + Tempo) -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+            </svg>
+            <select id="voice-select" aria-label="Wybierz głos lektora" class="text-xs sm:text-sm rounded-lg border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 max-w-[180px]">
+              <option value="">Ładowanie głosów...</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-1.5 bg-stone-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+            <span class="text-xs text-slate-500 dark:text-slate-400">Tempo:</span>
+            <select id="rate-select" aria-label="Prędkość czytania" class="text-xs font-semibold bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none">
+              <option value="0.7">0.7x</option>
+              <option value="0.85">0.85x</option>
+              <option value="1.0" selected>1.0x</option>
+              <option value="1.15">1.15x</option>
+            </select>
+          </div>
+
+          <button id="play-all-btn" class="px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/40 dark:hover:bg-teal-900/60 text-teal-700 dark:text-teal-300 text-xs sm:text-sm font-medium transition flex items-center gap-1.5">
+            <svg id="play-all-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+            </svg>
+            <span id="play-all-label">Czytaj całość</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Drugi pasek: Przełącznik naturalnego tłumaczenia + Eksport -->
+      <div class="flex flex-wrap items-center justify-between gap-3 px-1">
+        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none">
+          <input type="checkbox" id="toggle-natural-pl" class="sr-only peer" />
+          <div class="w-9 h-5 bg-stone-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600 relative"></div>
+          <span class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
+            Pokaż naturalne tłumaczenie zdań
+          </span>
+        </label>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="export-md-btn" class="px-3 py-1.5 rounded-lg border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-stone-50 dark:hover:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 transition flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Eksportuj do Markdown (.md)
+          </button>
+          <button id="export-html-btn" class="px-3 py-1.5 rounded-lg border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-stone-50 dark:hover:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 transition flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+            </svg>
+            Eksportuj do HTML (.html)
+          </button>
+        </div>
+      </div>
+
+      <!-- Główny obszar czytelniczy (Zdekodowany dokument) -->
+      <article id="reader-container" class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm p-5 sm:p-8 lg:p-10 space-y-6 transition-all">
+        <!-- Zawartość generowana dynamicznie przez JS -->
+      </article>
+    </section>
+
+  </main>
+
+  <!-- Popover / Tooltip ze szczegółami gramatycznymi po kliknięciu/najechaniu -->
+  <div id="grammar-popover" class="fixed z-40 hidden max-w-xs p-3 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs shadow-xl border border-slate-700 pointer-events-none transition-opacity duration-150">
+    <div class="flex items-center justify-between gap-2 mb-1">
+      <span id="popover-en" class="font-serif font-semibold text-sm text-teal-300"></span>
+      <span id="popover-badge" class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-medium">Zbitka / Idiom</span>
+    </div>
+    <div id="popover-pl" class="text-slate-300 mb-1.5"></div>
+    <div id="popover-grammar" class="text-slate-400 border-t border-slate-700 pt-1.5 italic"></div>
+  </div>
+
+  <!-- Stopka -->
+  <footer class="border-t border-stone-200 dark:border-slate-800 py-5 mt-10 text-center text-xs text-slate-500 dark:text-slate-400">
+    <p>Kliknij dowolne angielskie słowo lub frazę, aby usłyszeć wymowę. Zbitki i <em>phrasal verbs</em> są podkreślone przerywaną linią.</p>
+  </footer>
+
+  <script>
+    // =========================================================================
+    // 1. PRZYKŁADOWY TEKST MARKDOWN I GOTOWE DANE STARTOWE (ABY OD RAZU TESTOWAĆ)
+    // =========================================================================
+    const SAMPLE_MARKDOWN = `# A Morning Routine That Changed My Life
+
+For years, I used to put off waking up early. Whenever my alarm went off, I would hit the snooze button and stay in bed.
+
+## Turning Over a New Leaf
+
+Last month, I decided to give up this bad habit. At first, getting out of bed at six o'clock was not a piece of cake, but I kept going. Now, I look forward to my quiet mornings with a cup of coffee before the rest of the city wakes up.`;
+
+    const INITIAL_DECODED_DATA = {
+      blocks: [
+        {
+          type: "h1",
+          pl_natural: "Poranna rutyna, która zmieniła moje życie",
+          tokens: [
+            { en: "A", pl_literal: "(Przedimek)", grammar: "Przedimek nieokreślony", isChunk: false },
+            { en: "Morning", pl_literal: "Poranna", grammar: "Rzeczownik w funkcji przymiotnika", isChunk: false },
+            { en: "Routine", pl_literal: "Rutyna", grammar: "Rzeczownik (l. poj.)", isChunk: false },
+            { en: "That", pl_literal: "Która", grammar: "Zaimek względny", isChunk: false },
+            { en: "Changed", pl_literal: "Zmieniła", grammar: "Past Simple (czas przeszły)", isChunk: false },
+            { en: "My", pl_literal: "Moje", grammar: "Zaimek dzierżawczy", isChunk: false },
+            { en: "Life", pl_literal: "Życie", grammar: "Rzeczownik", isChunk: false }
+          ]
+        },
+        {
+          type: "p",
+          pl_natural: "Przez lata miałem w zwyczaju odkładać wczesne wstawanie. Ilekroć dzwonił mój budzik, wciskałem przycisk drzemki i zostawałem w łóżku.",
+          tokens: [
+            { en: "For years,", pl_literal: "Przez lata,", grammar: "Określenie czasu (For + okres)", isChunk: true },
+            { en: "I", pl_literal: "ja", grammar: "Zaimek osobowy", isChunk: false },
+            { en: "used to", pl_literal: "miałem w zwyczaju", grammar: "Konstrukcja 'used to' (przeszły nawyk)", isChunk: true },
+            { en: "put off", pl_literal: "odkładać na później", grammar: "Phrasal verb (odkładać)", isChunk: true },
+            { en: "waking up", pl_literal: "budzenie się", grammar: "Phrasal verb + Gerund (-ing)", isChunk: true },
+            { en: "early.", pl_literal: "wcześnie.", grammar: "Przysłówek", isChunk: false },
+            { en: "Whenever", pl_literal: "Ilekroć", grammar: "Spójnik", isChunk: false },
+            { en: "my", pl_literal: "mój", grammar: "Zaimek dzierżawczy", isChunk: false },
+            { en: "alarm", pl_literal: "budzik", grammar: "Rzeczownik", isChunk: false },
+            { en: "went off,", pl_literal: "zadzwonił (wypalił),", grammar: "Phrasal verb 'go off' (Past Simple)", isChunk: true },
+            { en: "I", pl_literal: "ja", grammar: "Zaimek osobowy", isChunk: false },
+            { en: "would", pl_literal: "zwykłem", grammar: "Czasownik modalny (nawyk w przeszłości)", isChunk: false },
+            { en: "hit", pl_literal: "uderzać / wciskać", grammar: "Czasownik w bezokoliczniku", isChunk: false },
+            { en: "the", pl_literal: "(ten)", grammar: "Przedimek określony", isChunk: false },
+            { en: "snooze button", pl_literal: "przycisk drzemki", grammar: "Rzeczownik złożony", isChunk: true },
+            { en: "and", pl_literal: "i", grammar: "Spójnik", isChunk: false },
+            { en: "stay", pl_literal: "zostawać", grammar: "Czasownik", isChunk: false },
+            { en: "in bed.", pl_literal: "w łóżku.", grammar: "Wyrażenie przyimkowe (bez przedimka)", isChunk: true }
+          ]
+        },
+        {
+          type: "h2",
+          pl_natural: "Zaczynając nowy rozdział",
+          tokens: [
+            { en: "Turning Over a New Leaf", pl_literal: "Przewracając Nowy Liść (Zaczynając od nowa)", grammar: "Idiom angielski (zmienić się na lepsze)", isChunk: true }
+          ]
+        },
+        {
+          type: "p",
+          pl_natural: "W zeszłym miesiącu postanowiłem rzucić ten zły nawyk. Na początku wyjście z łóżka o szóstej nie było bułką z masłem, ale szedłem dalej. Teraz nie mogę się doczekać moich cichych poranków z filiżanką kawy, zanim reszta miasta się obudzi.",
+          tokens: [
+            { en: "Last month,", pl_literal: "Zeszłego miesiąca,", grammar: "Określenie czasu przeszłego", isChunk: true },
+            { en: "I", pl_literal: "ja", grammar: "Zaimek osobowy", isChunk: false },
+            { en: "decided", pl_literal: "zdecydowałem", grammar: "Past Simple", isChunk: false },
+            { en: "to", pl_literal: "aby", grammar: "Partykuła bezokolicznika", isChunk: false },
+            { en: "give up", pl_literal: "poddać / rzucić", grammar: "Phrasal verb (rzucić nawyk)", isChunk: true },
+            { en: "this", pl_literal: "ten", grammar: "Zaimek wskazujący", isChunk: false },
+            { en: "bad", pl_literal: "zły", grammar: "Przymiotnik", isChunk: false },
+            { en: "habit.", pl_literal: "nawyk.", grammar: "Rzeczownik", isChunk: false },
+            { en: "At first,", pl_literal: "Na początku,", grammar: "Wyrażenie przysłówkowe", isChunk: true },
+            { en: "getting out of", pl_literal: "wydostawanie się z", grammar: "Phrasal verb + Gerund", isChunk: true },
+            { en: "bed", pl_literal: "łóżka", grammar: "Rzeczownik", isChunk: false },
+            { en: "at six o'clock", pl_literal: "o szóstej godzinie", grammar: "Określenie godziny", isChunk: true },
+            { en: "was not", pl_literal: "nie było", grammar: "Past Simple (przeczenie 'to be')", isChunk: true },
+            { en: "a piece of cake,", pl_literal: "kawałkiem ciasta (bułką z masłem),", grammar: "Idiom (coś bardzo łatwego)", isChunk: true },
+            { en: "but", pl_literal: "ale", grammar: "Spójnik", isChunk: false },
+            { en: "I", pl_literal: "ja", grammar: "Zaimek osobowy", isChunk: false },
+            { en: "kept going.", pl_literal: "utrzymywałem idąc (szedłem dalej).", grammar: "Phrasal verb 'keep going' (Past Simple)", isChunk: true },
+            { en: "Now,", pl_literal: "Teraz,", grammar: "Przysłówek czasu", isChunk: false },
+            { en: "I", pl_literal: "ja", grammar: "Zaimek osobowy", isChunk: false },
+            { en: "look forward to", pl_literal: "patrzę w przód do (nie mogę się doczekać)", grammar: "Phrasal verb (3-członowy)", isChunk: true },
+            { en: "my", pl_literal: "moich", grammar: "Zaimek dzierżawczy", isChunk: false },
+            { en: "quiet", pl_literal: "cichych", grammar: "Przymiotnik", isChunk: false },
+            { en: "mornings", pl_literal: "poranków", grammar: "Rzeczownik (l. mn.)", isChunk: false },
+            { en: "with", pl_literal: "z", grammar: "Przyimek", isChunk: false },
+            { en: "a cup of", pl_literal: "filiżanką", grammar: "Określenie ilości", isChunk: true },
+            { en: "coffee", pl_literal: "kawy", grammar: "Rzeczownik niepoliczalny", isChunk: false },
+            { en: "before", pl_literal: "zanim", grammar: "Spójnik czasowy", isChunk: false },
+            { en: "the rest of", pl_literal: "reszta", grammar: "Wyrażenie rzeczownikowe", isChunk: true },
+            { en: "the city", pl_literal: "tego miasta", grammar: "Rzeczownik z przedimkiem", isChunk: true },
+            { en: "wakes up.", pl_literal: "budzi się.", grammar: "Phrasal verb 'wake up' (Present Simple)", isChunk: true }
+          ]
+        }
+      ]
+    };
+
+    // =========================================================================
+    // 2. STAN APLIKACJI I REFERENCJE DOM
+    // =========================================================================
+    let currentData = JSON.parse(JSON.stringify(INITIAL_DECODED_DATA));
+    let currentMode = 'decode'; // 'decode' | 'listen' | 'test'
+    let showNaturalPl = false;
+    let availableVoices = [];
+    let isPlayingAll = false;
+    let stopAllRequested = false;
+
+    const markdownInput = document.getElementById('markdown-input');
+    const readerContainer = document.getElementById('reader-container');
+    const decodeBtn = document.getElementById('decode-btn');
+    const decodeIcon = document.getElementById('decode-icon');
+    const decodeSpinner = document.getElementById('decode-spinner');
+    const decodeBtnText = document.getElementById('decode-btn-text');
+    const voiceSelect = document.getElementById('voice-select');
+    const rateSelect = document.getElementById('rate-select');
+    const popover = document.getElementById('grammar-popover');
+
+    // Inicjalizacja pola tekstowego
+    markdownInput.value = SAMPLE_MARKDOWN;
+
+    // =========================================================================
+    // 3. SYSTEM POWIADOMIEŃ (TOAST) BEZ UŻYCIA ALERT()
+    // =========================================================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors = {
+        info: 'bg-slate-900 text-white border-slate-700',
+        success: 'bg-teal-700 text-white border-teal-600',
+        error: 'bg-rose-700 text-white border-rose-600',
+        warning: 'bg-amber-700 text-white border-amber-600'
+      };
+      toast.className = `pointer-events-auto px-4 py-3 rounded-xl border shadow-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3800);
+    }
+
+    // =========================================================================
+    // 4. OBSŁUGA MOTYWU, BANERA INSTRUKCJI I WCZYTYWANIA PLIKÓW (.md / .txt)
+    // =========================================================================
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+
+    const guideBtn = document.getElementById('toggle-guide-btn');
+    const guidePanel = document.getElementById('guide-panel');
+    const guideChevron = document.getElementById('guide-chevron');
+    guideBtn.addEventListener('click', () => {
+      guidePanel.classList.toggle('hidden');
+      guideChevron.classList.toggle('rotate-180');
+    });
+
+    document.getElementById('load-example-btn').addEventListener('click', () => {
+      markdownInput.value = SAMPLE_MARKDOWN;
+      currentData = JSON.parse(JSON.stringify(INITIAL_DECODED_DATA));
+      renderDecodedDocument();
+      showToast('Załadowano przykładowy artykuł wraz z dekodowaniem.', 'success');
+    });
+
+    document.getElementById('clear-input-btn').addEventListener('click', () => {
+      markdownInput.value = '';
+      markdownInput.focus();
+    });
+
+    // Dropzone i input pliku
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const fileNameBadge = document.getElementById('file-name-badge');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('border-teal-500', 'bg-teal-50/50', 'dark:bg-teal-950/30');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('border-teal-500', 'bg-teal-50/50', 'dark:bg-teal-950/30');
+    });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-teal-500', 'bg-teal-50/50', 'dark:bg-teal-950/30');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFileUpload(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleFileUpload(e.target.files[0]);
+      }
+    });
+
+    function handleFileUpload(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        markdownInput.value = event.target.result;
+        fileNameBadge.textContent = `Wczytano: ${file.name}`;
+        fileNameBadge.classList.add('text-teal-600', 'font-medium');
+        showToast(`Wczytano plik "${file.name}". Kliknij „Dekoduj tekst (AI)”.`, 'info');
+      };
+      reader.onerror = () => {
+        showToast('Nie udało się odczytać pliku.', 'error');
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // =========================================================================
+    // 5. INTEGRACJA Z GEMINI API (DEKODOWANIE INTERLINEARNE Z JSON SCHEMA)
+    // =========================================================================
+    async function decodeWithGemini(rawMarkdown) {
+      const apiKey = ""; // Klucz dostarczany automatycznie przez środowisko wykonawcze
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+      const systemPrompt = `Jesteś ekspertem metody nauki języków obcych Very Birkenbihl (dekodowanie interlinearne).
+Twoim zadaniem jest przeanalizowanie angielskiego tekstu w formacie Markdown i przygotowanie go do nauki dla Polaka.
+
+ZASADY KRYTYCZNE:
+1. Zachowaj strukturę Markdowna dzieląc tekst na bloki: "h1" (dla #), "h2" (dla ##), "h3" (dla ###), "li" (dla elementów listy) oraz "p" (dla akapitów).
+2. Podziel każdy blok na pojedyncze tokeny/słowa.
+3. GRUPOWANIE (CHUNKING): Czasowniki frazowe (phrasal verbs, np. "look forward to", "give up", "wake up"), idiomy (np. "piece of cake") oraz stałe wyrażenia przyimkowe łącz w JEDEN token i oznacz jako "isChunk": true.
+4. TŁUMACZENIE DOSŁOWNE ("pl_literal"): Tłumacz SŁOWO W SŁOWO, zachowując surową strukturę gramatyczną oryginału (np. "I am looking" -> "Ja jestem patrzący", "look forward to" -> "patrzę w przód do"). Nie wygładzaj szyku zdania w polu "pl_literal"! Zachowaj znaki interpunkcyjne przy odpowiednich słowach angielskich i polskich.
+5. NOTATKA GRAMATYCZNA ("grammar"): Krótka, jasna wskazówka po polsku (np. "Present Continuous", "Phrasal verb", "Czas przeszły Past Simple", "Idiom").
+6. TŁUMACZENIE NATURALNE ("pl_natural"): Poprawne, gładkie tłumaczenie całego bloku na język polski.`;
+
+      const payload = {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `Zdekoduj poniższy tekst Markdown metodą Birkenbihl:\n\n${rawMarkdown}` }]
+          }
+        ],
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              blocks: {
+                type: "ARRAY",
+                description: "Lista bloków tekstu odpowiadająca strukturze Markdown",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    type: {
+                      type: "STRING",
+                      enum: ["h1", "h2", "h3", "p", "li"],
+                      description: "Typ elementu Markdown"
+                    },
+                    pl_natural: {
+                      type: "STRING",
+                      description: "Naturalne, gładkie tłumaczenie całego bloku na polski"
+                    },
+                    tokens: {
+                      type: "ARRAY",
+                      description: "Słowa lub zgrupowane frazy w bloku",
+                      items: {
+                        type: "OBJECT",
+                        properties: {
+                          en: { type: "STRING", description: "Oryginalne angielskie słowo lub fraza" },
+                          pl_literal: { type: "STRING", description: "Dosłowne tłumaczenie słowo w słowo po polsku" },
+                          grammar: { type: "STRING", description: "Krótka uwaga gramatyczna po polsku" },
+                          isChunk: { type: "BOOLEAN", description: "True jeśli to phrasal verb, idiom lub stała zbitka" }
+                        },
+                        required: ["en", "pl_literal", "grammar", "isChunk"]
+                      }
+                    }
+                  },
+                  required: ["type", "pl_natural", "tokens"]
+                }
+              }
+            },
+            required: ["blocks"]
+          }
+        }
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Błąd API (${response.status}): ${errText}`);
+      }
+
+      const data = await response.json();
+      const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!jsonText) {
+        throw new Error("Brak odpowiedzi tekstowej z modelu AI.");
+      }
+
+      return JSON.parse(jsonText);
+    }
+
+    // Lokalny dekoder awaryjny (gdy brak połączenia z API)
+    function fallbackLocalDecoder(rawMarkdown) {
+      const lines = rawMarkdown.split(/\n+/).filter(l => l.trim().length > 0);
+      const blocks = lines.map(line => {
+        let type = 'p';
+        let cleanLine = line.trim();
+        if (cleanLine.startsWith('### ')) { type = 'h3'; cleanLine = cleanLine.slice(4); }
+        else if (cleanLine.startsWith('## ')) { type = 'h2'; cleanLine = cleanLine.slice(3); }
+        else if (cleanLine.startsWith('# ')) { type = 'h1'; cleanLine = cleanLine.slice(2); }
+        else if (cleanLine.startsWith('- ') || cleanLine.startsWith('* ')) { type = 'li'; cleanLine = cleanLine.slice(2); }
+
+        const words = cleanLine.split(/\s+/);
+        const tokens = words.map(w => ({
+          en: w,
+          pl_literal: `[${w.replace(/[^a-zA-Z]/g, '').toLowerCase()}]`,
+          grammar: "Tryb offline – uzupełnij lub połącz z AI",
+          isChunk: false
+        }));
+
+        return {
+          type,
+          pl_natural: "(Tryb offline – naturalne tłumaczenie dostępne po połączeniu z AI)",
+          tokens
+        };
+      });
+      return { blocks };
+    }
+
+    decodeBtn.addEventListener('click', async () => {
+      const text = markdownInput.value.trim();
+      if (!text) {
+        showToast('Wpisz lub wczytaj najpierw tekst po angielsku.', 'warning');
+        return;
+      }
+
+      stopSpeaking();
+      decodeBtn.disabled = true;
+      decodeIcon.classList.add('hidden');
+      decodeSpinner.classList.remove('hidden');
+      decodeBtnText.textContent = 'Dekodowanie przez AI...';
+
+      try {
+        const result = await decodeWithGemini(text);
+        if (result && Array.isArray(result.blocks)) {
+          currentData = result;
+          renderDecodedDocument();
+          showToast('Tekst został pomyślnie zdekodowany!', 'success');
+        } else {
+          throw new Error('Nieprawidłowa struktura danych.');
+        }
+      } catch (err) {
+        console.error(err);
+        // Jeśli tekst jest identyczny z przykładowym, użyj gotowego wzorca
+        if (text.trim() === SAMPLE_MARKDOWN.trim()) {
+          currentData = JSON.parse(JSON.stringify(INITIAL_DECODED_DATA));
+          renderDecodedDocument();
+          showToast('Załadowano wbudowane dekodowanie dla tekstu przykładowego.', 'info');
+        } else {
+          currentData = fallbackLocalDecoder(text);
+          renderDecodedDocument();
+          showToast('Brak klucza API w tym środowisku – podzielono tekst na bloki offline.', 'warning');
+        }
+      } finally {
+        decodeBtn.disabled = false;
+        decodeIcon.classList.remove('hidden');
+        decodeSpinner.classList.add('hidden');
+        decodeBtnText.textContent = 'Dekoduj tekst (AI)';
+      }
+    });
+
+    // =========================================================================
+    // 6. RENDEROWANIE WIDOKU INTERLINEARNEGO I INTERAKCJE
+    // =========================================================================
+    function renderDecodedDocument() {
+      readerContainer.innerHTML = '';
+
+      // Ustaw klasę trybu nauki na kontenerze
+      readerContainer.classList.remove('mode-decode', 'mode-listen', 'mode-test');
+      readerContainer.classList.add(`mode-${currentMode}`);
+
+      if (!currentData || !currentData.blocks || currentData.blocks.length === 0) {
+        readerContainer.innerHTML = '<p class="text-slate-400 text-center py-8">Brak treści do wyświetlenia.</p>';
+        return;
+      }
+
+      currentData.blocks.forEach((block, blockIndex) => {
+        const blockWrapper = document.createElement('div');
+        blockWrapper.className = 'block-wrapper group rounded-xl p-3 -mx-3 transition-colors duration-200';
+        blockWrapper.dataset.blockIndex = blockIndex;
+
+        // Nagłówek bloku z przyciskiem odsłuchu całego zdania/akapitu
+        const headerRow = document.createElement('div');
+        headerRow.className = 'flex items-start gap-3';
+
+        const playBlockBtn = document.createElement('button');
+        playBlockBtn.type = 'button';
+        playBlockBtn.title = 'Odsłuchaj ten fragment (Aktywne słuchanie)';
+        playBlockBtn.className = 'mt-2 shrink-0 w-8 h-8 rounded-full bg-stone-100 dark:bg-slate-800 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-600 text-teal-700 dark:text-teal-300 flex items-center justify-center transition shadow-xs';
+        playBlockBtn.innerHTML = `
+          <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"></path>
+          </svg>
+        `;
+        playBlockBtn.addEventListener('click', () => speakBlock(blockIndex));
+
+        // Kontener na tokeny interlinearne
+        const tokensContainer = document.createElement('div');
+        tokensContainer.className = 'flex-1 flex flex-wrap items-end';
+
+        // Styl typograficzny zależny od typu Markdown (h1, h2, h3, li, p)
+        let enSizeClass = 'text-lg sm:text-xl';
+        if (block.type === 'h1') {
+          enSizeClass = 'text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white';
+          blockWrapper.classList.add('border-b', 'border-stone-200', 'dark:border-slate-800', 'pb-4');
+        } else if (block.type === 'h2') {
+          enSizeClass = 'text-xl sm:text-2xl font-semibold text-slate-800 dark:text-slate-100 mt-2';
+        } else if (block.type === 'h3') {
+          enSizeClass = 'text-lg sm:text-xl font-semibold text-slate-800 dark:text-slate-200';
+        } else if (block.type === 'li') {
+          tokensContainer.classList.add('pl-3', 'border-l-2', 'border-teal-500/40');
+        }
+
+        block.tokens.forEach((token, tokenIndex) => {
+          const tokenEl = document.createElement('span');
+          tokenEl.className = `word-token ${token.isChunk ? 'is-chunk' : ''}`;
+          tokenEl.dataset.blockIndex = blockIndex;
+          tokenEl.dataset.tokenIndex = tokenIndex;
+
+          const glossEl = document.createElement('span');
+          glossEl.className = 'gloss-pl';
+          glossEl.textContent = token.pl_literal;
+
+          const enEl = document.createElement('span');
+          enEl.className = `word-en ${enSizeClass}`;
+          enEl.textContent = token.en;
+
+          tokenEl.appendChild(glossEl);
+          tokenEl.appendChild(enEl);
+
+          // Kliknięcie w pojedyncze słowo/zbitkę: wymowa + odkrycie w trybie testu
+          tokenEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (currentMode === 'test') {
+              tokenEl.classList.toggle('revealed');
+            }
+            speakSingleToken(token.en, tokenEl);
+            showGrammarPopover(token, tokenEl);
+          });
+
+          // Najechanie myszką pokazuje tooltip gramatyczny
+          tokenEl.addEventListener('mouseenter', () => {
+            showGrammarPopover(token, tokenEl);
+          });
+          tokenEl.addEventListener('mouseleave', () => {
+            hideGrammarPopover();
+          });
+
+          tokensContainer.appendChild(tokenEl);
+        });
+
+        headerRow.appendChild(playBlockBtn);
+        headerRow.appendChild(tokensContainer);
+        blockWrapper.appendChild(headerRow);
+
+        // Opcjonalne naturalne tłumaczenie pod blokiem
+        if (block.pl_natural) {
+          const naturalEl = document.createElement('div');
+          naturalEl.className = `natural-translation mt-2 ml-11 pl-3 border-l-2 border-stone-300 dark:border-slate-700 text-xs sm:text-sm text-slate-600 dark:text-slate-400 italic ${showNaturalPl ? '' : 'hidden'}`;
+          naturalEl.textContent = `Tłumaczenie naturalne: ${block.pl_natural}`;
+          blockWrapper.appendChild(naturalEl);
+        }
+
+        readerContainer.appendChild(blockWrapper);
+      });
+    }
+
+    // Obsługa Popovera ze szczegółami gramatycznymi
+    function showGrammarPopover(token, anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      document.getElementById('popover-en').textContent = token.en;
+      document.getElementById('popover-pl').textContent = `Dosłownie: „${token.pl_literal}”`;
+      document.getElementById('popover-grammar').textContent = token.grammar || 'Brak dodatkowej notatki';
+      
+      const badge = document.getElementById('popover-badge');
+      if (token.isChunk) {
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      popover.classList.remove('hidden');
+      const popRect = popover.getBoundingClientRect();
+      
+      let top = rect.top - popRect.height - 8;
+      if (top < 10) {
+        top = rect.bottom + 8;
+      }
+      let left = rect.left + (rect.width / 2) - (popRect.width / 2);
+      left = Math.max(12, Math.min(left, window.innerWidth - popRect.width - 12));
+
+      popover.style.top = `${top}px`;
+      popover.style.left = `${left}px`;
+    }
+
+    function hideGrammarPopover() {
+      popover.classList.add('hidden');
+    }
+
+    // Przełączniki trybów nauki
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentMode = btn.dataset.mode;
+        document.querySelectorAll('.mode-btn').forEach(b => {
+          b.classList.remove('bg-white', 'dark:bg-slate-700', 'text-teal-700', 'dark:text-teal-300', 'shadow-sm');
+          b.classList.add('text-slate-600', 'dark:text-slate-300');
+        });
+        btn.classList.add('bg-white', 'dark:bg-slate-700', 'text-teal-700', 'dark:text-teal-300', 'shadow-sm');
+        btn.classList.remove('text-slate-600', 'dark:text-slate-300');
+
+        renderDecodedDocument();
+      });
+    });
+
+    // Przełącznik widoczności naturalnego tłumaczenia
+    document.getElementById('toggle-natural-pl').addEventListener('change', (e) => {
+      showNaturalPl = e.target.checked;
+      document.querySelectorAll('.natural-translation').forEach(el => {
+        el.classList.toggle('hidden', !showNaturalPl);
+      });
+    });
+
+    // =========================================================================
+    // 7. WEB SPEECH API (LEKTOR GŁOSOWY I PODŚWIETLANIE W CZASIE RZECZYWISTYM)
+    // =========================================================================
+    function loadEnglishVoices() {
+      if (!('speechSynthesis' in window)) {
+        voiceSelect.innerHTML = '<option value="">Brak obsługi TTS w przeglądarce</option>';
+        return;
+      }
+
+      const allVoices = window.speechSynthesis.getVoices();
+      availableVoices = allVoices.filter(v => v.lang.toLowerCase().startsWith('en'));
+
+      if (availableVoices.length === 0) {
+        voiceSelect.innerHTML = '<option value="">Domyślny głos angielski</option>';
+        return;
+      }
+
+      voiceSelect.innerHTML = '';
+      availableVoices.forEach((voice, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        const flag = voice.lang.includes('GB') || voice.lang.includes('UK') ? '🇬🇧 UK' :
+                     voice.lang.includes('US') ? '🇺🇸 US' : `🌐 ${voice.lang}`;
+        opt.textContent = `${flag} – ${voice.name.replace(/Microsoft |Google /g, '')}`;
+        voiceSelect.appendChild(opt);
+      });
+    }
+
+    if ('speechSynthesis' in window) {
+      loadEnglishVoices();
+      window.speechSynthesis.onvoiceschanged = loadEnglishVoices;
+    }
+
+    function getSelectedVoice() {
+      const idx = parseInt(voiceSelect.value, 10);
+      if (!isNaN(idx) && availableVoices[idx]) {
+        return availableVoices[idx];
+      }
+      return availableVoices[0] || null;
+    }
+
+    function clearSpeechHighlights() {
+      document.querySelectorAll('.speaking-sentence').forEach(el => el.classList.remove('speaking-sentence'));
+      document.querySelectorAll('.speaking-word').forEach(el => el.classList.remove('speaking-word'));
+    }
+
+    function stopSpeaking() {
+      stopAllRequested = true;
+      isPlayingAll = false;
+      updatePlayAllButtonUI();
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      clearSpeechHighlights();
+    }
+
+    function speakSingleToken(text, tokenEl) {
+      if (!('speechSynthesis' in window)) {
+        showToast('Twoja przeglądarka nie obsługuje syntezatora mowy.', 'warning');
+        return;
+      }
+      stopSpeaking();
+      const cleanText = text.replace(/[.,!?;:"()]/g, '').trim();
+      if (!cleanText) return;
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      const voice = getSelectedVoice();
+      if (voice) utterance.voice = voice;
+      utterance.lang = voice ? voice.lang : 'en-US';
+      utterance.rate = parseFloat(rateSelect.value) || 1.0;
+
+      tokenEl.classList.add('speaking-word');
+      utterance.onend = () => tokenEl.classList.remove('speaking-word');
+      utterance.onerror = () => tokenEl.classList.remove('speaking-word');
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function speakBlock(blockIndex, onCompleteCallback = null) {
+      if (!('speechSynthesis' in window)) {
+        showToast('Twoja przeglądarka nie obsługuje syntezatora mowy.', 'warning');
+        return;
+      }
+
+      if (!onCompleteCallback) {
+        stopSpeaking();
+      }
+
+      const block = currentData.blocks[blockIndex];
+      if (!block) return;
+
+      const blockEl = document.querySelector(`.block-wrapper[data-block-index="${blockIndex}"]`);
+      const tokenEls = blockEl ? Array.from(blockEl.querySelectorAll('.word-token')) : [];
+
+      // Budujemy pełny tekst bloku oraz mapujemy indeksy znaków na tokeny
+      let fullText = '';
+      const tokenRanges = [];
+
+      block.tokens.forEach((t, idx) => {
+        const start = fullText.length;
+        fullText += t.en;
+        const end = fullText.length;
+        tokenRanges.push({ start, end, el: tokenEls[idx] });
+        fullText += ' ';
+      });
+
+      const utterance = new SpeechSynthesisUtterance(fullText.trim());
+      const voice = getSelectedVoice();
+      if (voice) utterance.voice = voice;
+      utterance.lang = voice ? voice.lang : 'en-US';
+      utterance.rate = parseFloat(rateSelect.value) || 1.0;
+
+      if (blockEl) {
+        blockEl.classList.add('speaking-sentence');
+      }
+
+      // Śledzenie aktualnie wypowiadanego słowa (zdarzenie onboundary)
+      utterance.onboundary = (event) => {
+        if (event.name === 'word') {
+          const charIdx = event.charIndex;
+          tokenRanges.forEach(range => {
+            if (range.el) {
+              if (charIdx >= range.start - 1 && charIdx <= range.end) {
+                range.el.classList.add('speaking-word');
+              } else {
+                range.el.classList.remove('speaking-word');
+              }
+            }
+          });
+        }
+      };
+
+      utterance.onend = () => {
+        clearSpeechHighlights();
+        if (onCompleteCallback) onCompleteCallback();
+      };
+
+      utterance.onerror = () => {
+        clearSpeechHighlights();
+        if (onCompleteCallback) onCompleteCallback();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Odtwarzanie całego dokumentu po kolei (Aktywne / Pasywne słuchanie)
+    const playAllBtn = document.getElementById('play-all-btn');
+    const playAllLabel = document.getElementById('play-all-label');
+
+    function updatePlayAllButtonUI() {
+      if (isPlayingAll) {
+        playAllLabel.textContent = 'Zatrzymaj';
+        playAllBtn.classList.add('bg-rose-100', 'text-rose-700', 'dark:bg-rose-900/50', 'dark:text-rose-300');
+        playAllBtn.classList.remove('bg-teal-50', 'text-teal-700');
+      } else {
+        playAllLabel.textContent = 'Czytaj całość';
+        playAllBtn.classList.remove('bg-rose-100', 'text-rose-700', 'dark:bg-rose-900/50', 'dark:text-rose-300');
+        playAllBtn.classList.add('bg-teal-50', 'text-teal-700');
+      }
+    }
+
+    playAllBtn.addEventListener('click', () => {
+      if (isPlayingAll) {
+        stopSpeaking();
+        return;
+      }
+
+      stopSpeaking();
+      isPlayingAll = true;
+      stopAllRequested = false;
+      updatePlayAllButtonUI();
+
+      let currentIdx = 0;
+      function playNext() {
+        if (stopAllRequested || currentIdx >= currentData.blocks.length) {
+          isPlayingAll = false;
+          updatePlayAllButtonUI();
+          clearSpeechHighlights();
+          return;
+        }
+        const blockEl = document.querySelector(`.block-wrapper[data-block-index="${currentIdx}"]`);
+        if (blockEl) {
+          blockEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        speakBlock(currentIdx, () => {
+          currentIdx++;
+          setTimeout(playNext, 350);
+        });
+      }
+
+      playNext();
+    });
+
+    // =========================================================================
+    // 8. EKSPORT DO MARKDOWN (.md) Z TAGAMI <ruby> ORAZ SAMODZIELNEGO HTML (.html)
+    // =========================================================================
+    function downloadFile(content, filename, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Eksport do Markdown (.md)
+    document.getElementById('export-md-btn').addEventListener('click', () => {
+      if (!currentData || !currentData.blocks) return;
+
+      let mdOutput = `<!-- Wygenerowano w Dekoderze Interlinearnym (Metoda Birkenbihl) -->\n\n`;
+
+      currentData.blocks.forEach(block => {
+        let prefix = '';
+        if (block.type === 'h1') prefix = '# ';
+        else if (block.type === 'h2') prefix = '## ';
+        else if (block.type === 'h3') prefix = '### ';
+        else if (block.type === 'li') prefix = '- ';
+
+        const rubyLine = block.tokens
+          .map(t => `<ruby>${t.en}<rt>${t.pl_literal}</rt></ruby>`)
+          .join(' ');
+
+        mdOutput += `${prefix}${rubyLine}\n`;
+        if (block.pl_natural) {
+          mdOutput += `> *Tłumaczenie: ${block.pl_natural}*\n`;
+        }
+        mdOutput += `\n`;
+      });
+
+      downloadFile(mdOutput.trim(), 'dekodowanie-birkenbihl.md', 'text/markdown;charset=utf-8');
+      showToast('Pobrano plik Markdown (.md) ze znacznikami <ruby>.', 'success');
+    });
+
+    // Eksport do samodzielnego pliku HTML (.html) do nauki offline
+    document.getElementById('export-html-btn').addEventListener('click', () => {
+      if (!currentData || !currentData.blocks) return;
+
+      const blocksHtml = currentData.blocks.map(block => {
+        const tag = ['h1', 'h2', 'h3'].includes(block.type) ? block.type : 'p';
+        const tokensHtml = block.tokens.map(t => `
+          <span class="token ${t.isChunk ? 'chunk' : ''}" title="${t.grammar}">
+            <span class="pl">${t.pl_literal}</span>
+            <span class="en">${t.en}</span>
+          </span>
+        `).join('');
+
+        return `
+          <div class="block">
+            <${tag} class="interlinear">${tokensHtml}</${tag}>
+            ${block.pl_natural ? `<div class="natural">${block.pl_natural}</div>` : ''}
+          </div>
+        `;
+      }).join('\n');
+
+      const standaloneHtml = `<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arkusz nauki – Metoda Birkenbihl</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #FAF9F6; color: #1E293B; max-width: 820px; margin: 2rem auto; padding: 0 1.25rem; line-height: 1.6; }
+    .block { margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid #E2E8F0; }
+    .interlinear { display: flex; flex-wrap: wrap; align-items: flex-end; font-weight: inherit; margin: 0; }
+    .token { display: inline-flex; flex-direction: column; margin-right: 0.55rem; margin-bottom: 0.65rem; padding: 2px 4px; border-radius: 4px; }
+    .token.chunk { border-bottom: 2px dashed #D97706; background: rgba(245, 158, 11, 0.08); }
+    .pl { font-size: 0.75rem; color: #0F766E; font-weight: 600; margin-bottom: 2px; }
+    .en { font-family: Georgia, serif; font-size: 1.15rem; }
+    h1 .en { font-size: 1.8rem; font-weight: bold; }
+    h2 .en { font-size: 1.4rem; font-weight: bold; }
+    .natural { font-size: 0.85rem; color: #64748B; font-style: italic; margin-top: 0.35rem; }
+  </style>
+</head>
+<body>
+  ${blocksHtml}
+</body>
+</html>`;
+
+      downloadFile(standaloneHtml, 'arkusz-birkenbihl-offline.html', 'text/html;charset=utf-8');
+      showToast('Pobrano samodzielny plik HTML do nauki offline.', 'success');
+    });
+
+    // Pierwsze renderowanie po załadowaniu strony
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDecodedDocument();
+    });
+  </script>
+</body>
+</html>
