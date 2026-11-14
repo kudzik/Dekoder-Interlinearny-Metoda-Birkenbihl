@@ -14,9 +14,16 @@ const { title = "Dekoder Interlinearny — Metoda Birkenbihl" } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Ucz się angielskiego metodą dekodowania interlinearnego Very Birkenbihl." />
+    <meta name="theme-color" content="#f6f5f0" />
+    <script is:inline>
+      const savedTheme = localStorage.getItem("birkenbihl-theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", savedTheme === "dark" || (!savedTheme && prefersDark));
+    </script>
     <title>{title}</title>
   </head>
   <body class="min-h-screen antialiased">
+    <a href="#main-content" class="skip-link">Przejdź do treści</a>
     <slot />
   </body>
 </html>

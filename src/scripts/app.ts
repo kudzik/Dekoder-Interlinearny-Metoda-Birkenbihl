@@ -212,10 +212,12 @@ export function initializeApp(): void {
 
   getElement<HTMLButtonElement>("theme-toggle").addEventListener("click", () => {
     document.documentElement.classList.toggle("dark");
+    localStorage.setItem("birkenbihl-theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
   });
   getElement<HTMLButtonElement>("guide-toggle").addEventListener("click", () => {
     const panel = getElement<HTMLElement>("guide-panel");
     panel.classList.toggle("hidden");
+    getElement<HTMLButtonElement>("guide-toggle").setAttribute("aria-expanded", String(!panel.classList.contains("hidden")));
     getElement<HTMLElement>("guide-chevron").classList.toggle("rotate-180", !panel.classList.contains("hidden"));
   });
 

@@ -143,27 +143,35 @@ test("keeps the learning interface usable at phone, tablet, and desktop widths",
   await expect(page.getByRole("button", { name: "Eksport Markdown" })).toBeFocused();
 });
 
-test("aligns playback controls and keeps grammar popovers inside a narrow viewport", async ({ page }) => {
+test("keeps every sentence play control on the left and grammar popovers inside a narrow viewport", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 680 });
   await page.goto("/");
 
   const firstBlock = page.locator("#reader .decoded-block").first();
-  const blockPlay = firstBlock.locator(".play-block-button");
-  const sentencePlay = firstBlock.locator(".play-audio-button:not(.play-block-button)").first();
-  const [blockBox, sentenceBox] = await Promise.all([blockPlay.boundingBox(), sentencePlay.boundingBox()]);
-  if (!blockBox || !sentenceBox) throw new Error("Playback controls should be visible");
-  expect(Math.abs(blockBox.y - sentenceBox.y)).toBeLessThan(1);
-  expect(sentenceBox.x - (blockBox.x + blockBox.width)).toBeGreaterThanOrEqual(0);
-  expect(sentenceBox.x - (blockBox.x + blockBox.width)).toBeLessThanOrEqual(8);
+  const firstSentence = firstBlock.locator(".decoded-sentence").first();
+  const [firstButtonBox, firstTextBox, firstEnglishBox] = await Promise.all([
+    firstSentence.locator(".play-audio-button").boundingBox(),
+    firstSentence.locator(".sentence-text").boundingBox(),
+    firstSentence.locator(".token-en").first().boundingBox(),
+  ]);
+  if (!firstButtonBox || !firstTextBox || !firstEnglishBox) throw new Error("First sentence playback should be visible");
+  const firstButtonCenter = firstButtonBox.y + firstButtonBox.height / 2;
+  const firstEnglishCenter = firstEnglishBox.y + firstEnglishBox.height / 2;
+  expect(Math.abs(firstButtonCenter - firstEnglishCenter)).toBeLessThan(6);
+  expect(firstTextBox.x - firstButtonBox.x - firstButtonBox.width).toBeGreaterThanOrEqual(0);
+  expect(firstTextBox.x - firstButtonBox.x - firstButtonBox.width).toBeLessThanOrEqual(8);
 
   const secondBlock = page.locator("#reader .decoded-block").nth(1);
   const secondSentence = secondBlock.locator(".decoded-sentence").nth(1);
-  const [sentenceButtonBox, sentenceTextBox] = await Promise.all([
+  const [sentenceButtonBox, sentenceTextBox, sentenceEnglishBox] = await Promise.all([
     secondSentence.locator(".play-audio-button").boundingBox(),
     secondSentence.locator(".sentence-text").boundingBox(),
+    secondSentence.locator(".token-en").first().boundingBox(),
   ]);
-  if (!sentenceButtonBox || !sentenceTextBox) throw new Error("Sentence playback should sit beside its text");
-  expect(Math.abs(sentenceButtonBox.y - sentenceTextBox.y)).toBeLessThan(12);
+  if (!sentenceButtonBox || !sentenceTextBox || !sentenceEnglishBox) throw new Error("Sentence playback should sit beside its text");
+  const sentenceButtonCenter = sentenceButtonBox.y + sentenceButtonBox.height / 2;
+  const sentenceEnglishCenter = sentenceEnglishBox.y + sentenceEnglishBox.height / 2;
+  expect(Math.abs(sentenceButtonCenter - sentenceEnglishCenter)).toBeLessThan(6);
   expect(sentenceTextBox.x - sentenceButtonBox.x - sentenceButtonBox.width).toBeGreaterThanOrEqual(0);
   expect(sentenceTextBox.x - sentenceButtonBox.x - sentenceButtonBox.width).toBeLessThanOrEqual(8);
 

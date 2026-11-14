@@ -22,7 +22,7 @@ export function renderDocument(
 
   decodedDocument.blocks.forEach((block, blockIndex) => {
     const blockElement = document.createElement("div");
-    blockElement.className = "decoded-block rounded-xl p-3 transition-colors";
+    blockElement.className = "decoded-block rounded-xl px-1 py-4 transition-colors sm:px-3";
 
     if (block.type === "list-item") {
       blockElement.classList.add("border-l-2", "border-teal-500/50", "ml-3");
@@ -40,9 +40,10 @@ export function renderDocument(
     blockControls.append(playBlockButton);
     blockElement.append(blockControls);
 
-    block.sentences.forEach((sentence, sentenceIndex) => {
+    block.sentences.forEach((sentence) => {
       const sentenceElement = document.createElement("section");
       sentenceElement.className = "decoded-sentence";
+      if (block.type === "heading") sentenceElement.classList.add("decoded-heading-sentence");
       sentenceElement.dataset.sentenceId = sentence.id;
 
       const controls = document.createElement("div");
@@ -52,11 +53,7 @@ export function renderDocument(
       sentenceLabel.textContent = `Zdanie ${sentence.id}`;
       const playButton = createPlayButton("Odtwórz zdanie");
       playButton.addEventListener("click", () => callbacks.onSpeakSentence(sentence, sentenceElement));
-      if (sentenceIndex === 0) {
-        blockControls.append(sentenceLabel, playButton);
-      } else {
-        controls.append(sentenceLabel, playButton);
-      }
+      controls.append(sentenceLabel, playButton);
 
       const textContainer = document.createElement(block.type === "heading" ? `h${block.level ?? 1}` : "p");
       textContainer.className =
@@ -79,10 +76,8 @@ export function renderDocument(
       naturalTranslation.hidden = !showNatural;
       naturalTranslation.textContent = `Tłumaczenie naturalne: ${sentence.natural_pl}`;
 
-      if (sentenceIndex > 0) {
-        sentenceElement.classList.add("decoded-sentence-with-control");
-        sentenceElement.append(controls);
-      }
+      sentenceElement.classList.add("decoded-sentence-with-control");
+      sentenceElement.append(controls);
       sentenceElement.append(textContainer, naturalTranslation);
       blockElement.append(sentenceElement);
     });
